@@ -1,0 +1,32 @@
+# Build output intermedio (regenerable con `npm run pdf` desde .build/)
+.build/node_modules/
+.build/activia-trace-doc.html
+.build/package-lock.json
+
+# PDF generado (es regenerable; descomentar si NO querés versionarlo)
+# activia-trace-documentacion.pdf
+
+# OS / IDE
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets — never commit
+.env
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker volumes / local data
+postgres_data/
+
+# Local tooling (no va al repo)
+.claude/
+.build/
