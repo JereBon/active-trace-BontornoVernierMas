@@ -42,6 +42,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     create_engine_and_session(_settings.DATABASE_URL)
     logger.info("Database engine initialized")
 
+    # Validate ENCRYPTION_KEY fail-fast before serving requests (C-02)
+    from app.core.crypto import validate_key
+    validate_key()
+    logger.info("Encryption key validated")
+
     yield  # application runs here
 
     # ── Shutdown ─────────────────────────────────────────────────────────────

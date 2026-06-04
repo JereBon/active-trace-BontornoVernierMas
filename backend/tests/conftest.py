@@ -15,6 +15,12 @@ import os
 
 import pytest
 import pytest_asyncio
+
+# ── Session-wide env setup ────────────────────────────────────────────────────
+# Set ENCRYPTION_KEY before any test module is imported that may use crypto.
+# 64 hex chars = 32 bytes, required for AES-256-GCM.
+_TEST_ENCRYPTION_KEY = "0" * 64
+os.environ.setdefault("ENCRYPTION_KEY", _TEST_ENCRYPTION_KEY)
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -69,7 +75,11 @@ def app(test_database_url: str, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", test_database_url)
     monkeypatch.setenv("DATABASE_URL_TEST", test_database_url)
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-32-characters-ok!")
-    monkeypatch.setenv("ENCRYPTION_KEY", "test-encryption-key-32-chars-ok!")
+    # 64 hex chars = 32 bytes, required for AES-256-GCM
+    monkeypatch.setenv(
+        "ENCRYPTION_KEY",
+        "0" * 64,
+    )
 
     # Reset the settings singleton so it re-reads from the patched env
     from app.core.config import _reset_settings
