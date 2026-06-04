@@ -28,7 +28,7 @@ class TestSettingsValid:
         """Scenario: Carga valida desde el entorno — Settings se instancia con campos tipados."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db")
         monkeypatch.setenv("SECRET_KEY", "a" * 32)
-        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 32)
+        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 64)
         monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 
         from app.core.config import Settings
@@ -41,7 +41,7 @@ class TestSettingsValid:
         """Scenario: Default del tiempo de expiracion — 15 minutos cuando no se provee."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db")
         monkeypatch.setenv("SECRET_KEY", "a" * 32)
-        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 32)
+        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 64)
         monkeypatch.delenv("ACCESS_TOKEN_EXPIRE_MINUTES", raising=False)
 
         from app.core.config import Settings
@@ -57,7 +57,7 @@ class TestSettingsInvalid:
         """Scenario: Configuracion incompleta — DATABASE_URL ausente causa ValidationError."""
         monkeypatch.delenv("DATABASE_URL", raising=False)
         monkeypatch.setenv("SECRET_KEY", "a" * 32)
-        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 32)
+        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 64)
 
         from app.core.config import Settings
 
@@ -69,7 +69,7 @@ class TestSettingsInvalid:
         """Settings falla si SECRET_KEY esta ausente."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db")
         monkeypatch.delenv("SECRET_KEY", raising=False)
-        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 32)
+        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 64)
 
         from app.core.config import Settings
 
@@ -80,7 +80,7 @@ class TestSettingsInvalid:
         """Settings falla si SECRET_KEY tiene menos de 32 caracteres."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db")
         monkeypatch.setenv("SECRET_KEY", "short")
-        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 32)
+        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 64)
 
         from app.core.config import Settings
 
@@ -88,8 +88,8 @@ class TestSettingsInvalid:
             Settings()
         assert "SECRET_KEY" in str(exc_info.value)
 
-    def test_falla_si_encryption_key_no_es_32_chars(self, monkeypatch):
-        """Settings falla si ENCRYPTION_KEY no tiene exactamente 32 caracteres."""
+    def test_falla_si_encryption_key_no_es_64_hex_chars(self, monkeypatch):
+        """Settings falla si ENCRYPTION_KEY no tiene exactamente 64 caracteres hex (32 bytes)."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db")
         monkeypatch.setenv("SECRET_KEY", "a" * 32)
         monkeypatch.setenv("ENCRYPTION_KEY", "tooshort")
@@ -104,7 +104,7 @@ class TestSettingsInvalid:
         """Scenario: Valor con tipo invalido — ACCESS_TOKEN_EXPIRE_MINUTES no numerico."""
         monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db")
         monkeypatch.setenv("SECRET_KEY", "a" * 32)
-        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 32)
+        monkeypatch.setenv("ENCRYPTION_KEY", "b" * 64)
         monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "not-a-number")
 
         from app.core.config import Settings

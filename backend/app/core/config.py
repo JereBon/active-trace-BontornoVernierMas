@@ -43,8 +43,15 @@ class Settings(BaseSettings):
     @field_validator("ENCRYPTION_KEY")
     @classmethod
     def encryption_key_exact_length(cls, v: str) -> str:
-        if len(v) != 32:
-            raise ValueError("ENCRYPTION_KEY must be exactly 32 characters (AES-256)")
+        # Must be exactly 64 hex characters (= 32 bytes for AES-256)
+        if len(v) != 64:
+            raise ValueError(
+                "ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes for AES-256-GCM)"
+            )
+        try:
+            bytes.fromhex(v)
+        except ValueError as exc:
+            raise ValueError("ENCRYPTION_KEY must be a valid hexadecimal string") from exc
         return v
 
 

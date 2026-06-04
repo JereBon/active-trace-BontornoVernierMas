@@ -14,12 +14,9 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
-
-
-class Base(DeclarativeBase):
-    """Declarative base for all ORM models."""
-
+# Re-export Base so existing imports from app.core.database still work.
+# The canonical definition lives in app.models.base (C-02).
+from app.models.base import Base  # noqa: F401
 
 # Module-level variables; populated by create_engine_and_session().
 # Using None as sentinel so callers that import before lifespan setup

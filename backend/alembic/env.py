@@ -27,10 +27,10 @@ if config.config_file_name is not None:
 # ── Metadata ─────────────────────────────────────────────────────────────────
 # Import Base so Alembic can detect model changes via autogenerate.
 # Models must be imported BEFORE accessing target_metadata.
-from app.core.database import Base  # noqa: E402
+from app.models.base import Base  # noqa: E402
 
-# All model modules imported here so their tables register on Base.metadata:
-# from app.models import user, tenant  ← add imports as models are created
+# All model modules imported here so their tables register on Base.metadata.
+import app.models  # noqa: F401, E402  — registers Tenant and all future models
 
 target_metadata = Base.metadata
 
