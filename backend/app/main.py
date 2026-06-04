@@ -83,8 +83,10 @@ def create_application() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1.routers.health import router as health_router
+    from app.api.v1.routers.auth import router as auth_router
 
     application.include_router(health_router)
+    application.include_router(auth_router)
 
     # ── OpenTelemetry ─────────────────────────────────────────────────────────
     # Must be called AFTER routers are included (instruments existing routes).
