@@ -3,6 +3,8 @@
 C-01 implements: get_db (async DB session per request).
 C-03 implements: get_current_user (JWT verification, identity from token).
 C-04 extends:    get_current_user now resolves effective permissions via RBAC.
+C-05 extends:    get_current_user extracts impersonating_user_id from JWT
+                 and sets impersonando_id on UsuarioAutenticado.
 
 Design rule: identity ALWAYS comes from the verified JWT token, never
 from URL params, request body, or headers supplied by the client.
@@ -161,11 +163,24 @@ async def get_current_user(
     roles_result = await session.execute(roles_stmt)
     roles = list(roles_result.scalars().all())
 
+    # ── C-05: extract impersonation context from JWT ──────────────────────────
+    # The claim 'impersonating_user_id' is set by POST /api/auth/impersonate.
+    # sub always refers to the REAL actor; impersonating_user_id is who they
+    # are operating as.  None means no active impersonation session.
+    impersonando_id: uuid.UUID | None = None
+    raw_imp = payload.get("impersonating_user_id")
+    if raw_imp:
+        try:
+            impersonando_id = uuid.UUID(raw_imp)
+        except ValueError:
+            pass  # malformed claim — treat as no impersonation
+
     return UsuarioAutenticado(
         user_id=usuario.id,
         tenant_id=usuario.tenant_id,
         roles=roles,
         permisos_efectivos=permisos_efectivos,
+        impersonando_id=impersonando_id,
     )
 
 

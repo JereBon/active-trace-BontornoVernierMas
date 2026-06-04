@@ -84,9 +84,20 @@ def create_application() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1.routers.health import router as health_router
     from app.api.v1.routers.auth import router as auth_router
+    from app.api.v1.routers.carreras import router as carreras_router
+    from app.api.v1.routers.cohortes import router as cohortes_router
+    from app.api.v1.routers.materias import router as materias_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
+    application.include_router(carreras_router)
+    application.include_router(cohortes_router)
+    application.include_router(materias_router)
+
+    # ── Exception handlers ────────────────────────────────────────────────────
+    from app.core.exceptions import register_exception_handlers
+
+    register_exception_handlers(application)
 
     # ── OpenTelemetry ─────────────────────────────────────────────────────────
     # Must be called AFTER routers are included (instruments existing routes).

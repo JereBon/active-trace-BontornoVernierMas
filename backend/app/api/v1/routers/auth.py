@@ -1,19 +1,23 @@
-"""api/v1/routers/auth.py — Authentication endpoints (C-03).
+"""api/v1/routers/auth.py — Authentication endpoints (C-03, C-05).
 
 Endpoints:
-  POST /api/auth/login          Login with email + password
-  POST /api/auth/2fa/verify     Complete login with TOTP code
-  POST /api/auth/refresh        Rotate refresh token
-  POST /api/auth/logout         Revoke current session
-  POST /api/auth/2fa/enroll     Generate TOTP secret (auth required)
-  POST /api/auth/2fa/confirm    Activate 2FA after verifying first code (auth required)
-  POST /api/auth/forgot         Request password reset token
-  POST /api/auth/reset          Consume reset token, update password
+  POST /api/auth/login               Login with email + password
+  POST /api/auth/2fa/verify          Complete login with TOTP code
+  POST /api/auth/refresh             Rotate refresh token
+  POST /api/auth/logout              Revoke current session
+  POST /api/auth/2fa/enroll          Generate TOTP secret (auth required)
+  POST /api/auth/2fa/confirm         Activate 2FA after verifying first code (auth required)
+  POST /api/auth/forgot              Request password reset token
+  POST /api/auth/reset               Consume reset token, update password
+  POST /api/auth/impersonate         Start impersonation session (C-05)
+  POST /api/auth/impersonate/end     End impersonation session (C-05)
 
 Design rules (non-negotiable):
   - Identity ALWAYS from JWT, never from request parameters.
   - No tenant_id in request bodies — resolved from JWT claims or tenant context.
   - All Pydantic schemas use extra='forbid'.
+  - Impersonation: sub = real actor UUID; impersonating_user_id = impersonated UUID.
+  - Actions under impersonation attributed to real actor (actor_id = sub).
 """
 
 import uuid
@@ -306,3 +310,190 @@ async def reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message)
     await session.commit()
     return {"message": "Password updated successfully."}
+
+
+# ── Impersonation endpoints (C-05) ────────────────────────────────────────────
+
+
+class ImpersonateRequest(BaseModel):
+    model_config = _FORBID
+    user_id: uuid.UUID
+
+
+class ImpersonateResponse(BaseModel):
+    model_config = _FORBID
+    access_token: str
+    token_type: str = "bearer"
+    impersonating_user_id: uuid.UUID
+
+
+@router.post(
+    "/impersonate",
+    status_code=status.HTTP_200_OK,
+    response_model=ImpersonateResponse,
+)
+async def start_impersonation(
+    body: ImpersonateRequest,
+    request: Request,
+    current_user: CurrentUser,
+    session: DBSession,
+) -> ImpersonateResponse:
+    """Start an impersonation session.
+
+    Requires permission: impersonacion:usar
+
+    The returned access token has:
+      - sub              = UUID of the REAL actor (current_user.user_id)
+      - impersonating_user_id = UUID of the user being impersonated
+
+    The real actor's identity and permissions remain authoritative for the
+    session.  All subsequent actions under this token will be attributed to
+    the real actor in the audit log.
+
+    Registers IMPERSONACION_INICIAR in the audit log.
+    """
+    from datetime import timedelta
+    from app.core.permisos import IMPERSONACION_USAR
+    from app.core.rbac import require_permission
+    from app.core.security import create_access_token
+    from app.core.audit import audit_action
+    from app.core.config import get_settings
+    from sqlalchemy import select
+    from app.models.usuario import Usuario
+
+    # Permission check — fail-closed
+    if IMPERSONACION_USAR not in current_user.permisos_efectivos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden",
+        )
+
+    # Verify the target user exists and belongs to the same tenant
+    stmt = select(Usuario).where(
+        Usuario.id == body.user_id,
+        Usuario.tenant_id == current_user.tenant_id,
+        Usuario.deleted_at.is_(None),
+    )
+    result = await session.execute(stmt)
+    target_user = result.scalar_one_or_none()
+
+    if target_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target user not found",
+        )
+
+    if not target_user.activo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target user is inactive",
+        )
+
+    # Prevent impersonating yourself
+    if body.user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot impersonate yourself",
+        )
+
+    # Create impersonation token: sub = real actor, extra claim = impersonated
+    cfg = get_settings()
+    token = create_access_token(
+        data={
+            "sub": str(current_user.user_id),
+            "tenant_id": str(current_user.tenant_id),
+            "impersonating_user_id": str(body.user_id),
+            "type": "impersonation",
+        },
+        expires_delta=timedelta(minutes=cfg.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    # Record IMPERSONACION_INICIAR — attributed to real actor
+    ip = _get_client_ip(request)
+    user_agent = request.headers.get("user-agent", "")
+    await audit_action(
+        session,
+        actor_id=current_user.user_id,
+        tenant_id=current_user.tenant_id,
+        accion="IMPERSONACION_INICIAR",
+        detalle={"impersonado_id": str(body.user_id)},
+        filas_afectadas=0,
+        ip=ip,
+        user_agent=user_agent,
+        actor_impersonado_id=body.user_id,
+    )
+
+    await session.commit()
+
+    return ImpersonateResponse(
+        access_token=token,
+        impersonating_user_id=body.user_id,
+    )
+
+
+@router.post(
+    "/impersonate/end",
+    status_code=status.HTTP_200_OK,
+    response_model=SessionResponse,
+)
+async def end_impersonation(
+    request: Request,
+    current_user: CurrentUser,
+    session: DBSession,
+) -> SessionResponse:
+    """End an impersonation session and return a normal access token.
+
+    Must be called with an impersonation JWT (one that has the
+    'impersonating_user_id' claim).
+
+    Registers IMPERSONACION_FINALIZAR in the audit log.
+    Returns a standard SessionResponse with a new non-impersonation token.
+
+    Note: a new refresh token is NOT issued here — the caller should use their
+    original refresh token to obtain a full session.
+    """
+    from datetime import timedelta
+    from app.core.security import create_access_token
+    from app.core.audit import audit_action
+    from app.core.config import get_settings
+
+    if current_user.impersonando_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active impersonation session",
+        )
+
+    ip = _get_client_ip(request)
+    user_agent = request.headers.get("user-agent", "")
+
+    # Record IMPERSONACION_FINALIZAR — attributed to real actor
+    await audit_action(
+        session,
+        actor_id=current_user.user_id,
+        tenant_id=current_user.tenant_id,
+        accion="IMPERSONACION_FINALIZAR",
+        detalle={"impersonado_id": str(current_user.impersonando_id)},
+        filas_afectadas=0,
+        ip=ip,
+        user_agent=user_agent,
+        actor_impersonado_id=current_user.impersonando_id,
+    )
+
+    # Issue a normal (non-impersonation) access token for the real actor
+    cfg = get_settings()
+    token = create_access_token(
+        data={
+            "sub": str(current_user.user_id),
+            "tenant_id": str(current_user.tenant_id),
+        },
+        expires_delta=timedelta(minutes=cfg.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    await session.commit()
+
+    # No new refresh token — return access_token only; refresh_token is empty string
+    # (callers should use their stored refresh token to get a full session)
+    return SessionResponse(
+        access_token=token,
+        refresh_token="",
+    )
