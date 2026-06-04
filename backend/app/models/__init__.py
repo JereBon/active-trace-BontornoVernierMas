@@ -9,6 +9,10 @@ from app.models.tenant import Tenant  # noqa: F401
 from app.models.usuario import Usuario  # noqa: F401
 from app.models.refresh_token import RefreshToken  # noqa: F401
 from app.models.password_reset_token import PasswordResetToken  # noqa: F401
+from app.models.rol import Rol  # noqa: F401
+from app.models.permiso import Permiso  # noqa: F401
+from app.models.rol_permiso import RolPermiso  # noqa: F401
+from app.models.usuario_rol import UsuarioRol  # noqa: F401
 
 __all__ = [
     "Base",
@@ -17,4 +21,8 @@ __all__ = [
     "Usuario",
     "RefreshToken",
     "PasswordResetToken",
+    "Rol",
+    "Permiso",
+    "RolPermiso",
+    "UsuarioRol",
 ]
