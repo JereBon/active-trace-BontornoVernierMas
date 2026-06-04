@@ -7,12 +7,25 @@ Design decisions:
 - Soft delete pattern: deleted_at IS NULL means "active"; never hard DELETE.
 """
 
+import enum
 import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class EstadoEntidad(str, enum.Enum):
+    """Shared active/inactive state for domain catalog entities.
+
+    Used by Carrera, Cohorte, Materia and any future catalog entity.
+    Stored as a plain string in the DB (not a native PG enum) so migrations
+    are simpler and the column is inspectable without enum catalog changes.
+    """
+
+    Activa = "Activa"
+    Inactiva = "Inactiva"
 
 
 class Base(DeclarativeBase):
