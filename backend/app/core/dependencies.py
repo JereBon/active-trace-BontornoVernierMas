@@ -2,10 +2,7 @@
 
 C-01 implements: get_db (async DB session per request).
 C-03 implements: get_current_user (JWT verification, identity from token).
-
-Reserved slots (filled by future changes):
-  - get_tenant        → C-02 (resolve tenant from JWT claims)
-  - require_permission → C-04 (RBAC enforcement)
+C-04 extends:    get_current_user now resolves effective permissions via RBAC.
 
 Design rule: identity ALWAYS comes from the verified JWT token, never
 from URL params, request body, or headers supplied by the client.
@@ -21,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthError
 from app.core.security import decode_access_token
+from app.core.schemas import UsuarioAutenticado
 from app.models.usuario import Usuario
 
 # OAuth2 scheme — token extracted from Authorization: Bearer <token>
@@ -53,24 +51,29 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def get_current_user(
     token: Annotated[str | None, Depends(oauth2_scheme)],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> Usuario:
-    """Resolve the authenticated user from the Bearer JWT.
+) -> UsuarioAutenticado:
+    """Resolve the authenticated user and their effective RBAC permissions.
+
+    C-04 extension: after verifying the JWT and loading the Usuario row,
+    this dependency also resolves permisos_efectivos via UsuarioRolRepository
+    and returns a UsuarioAutenticado object.
 
     Identity is derived EXCLUSIVELY from the verified JWT — never from
     request parameters, body, or any other client-supplied data.
 
     Args:
         token:   Raw JWT string extracted from the Authorization header.
-        session: Database session for the user lookup.
+        session: Database session for the user + permission lookup.
 
     Returns:
-        The active Usuario corresponding to the verified JWT claims.
+        UsuarioAutenticado with user_id, tenant_id, roles, permisos_efectivos.
 
     Raises:
         HTTPException 401: Token is missing, invalid, expired, or the user
                            no longer exists / is inactive.
     """
     from fastapi import HTTPException, status
+    from sqlalchemy import select
 
     if token is None:
         raise HTTPException(
@@ -104,9 +107,6 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Lookup the user in DB to confirm existence and activo status
-    from sqlalchemy import select
-
     try:
         user_id = uuid.UUID(sub)
     except ValueError:
@@ -115,6 +115,7 @@ async def get_current_user(
             detail="Invalid token subject",
         )
 
+    # Lookup the user in DB to confirm existence and activo status
     stmt = select(Usuario).where(
         Usuario.id == user_id,
         Usuario.deleted_at.is_(None),
@@ -129,9 +130,45 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return usuario
+    # ── C-04: resolve effective permissions ───────────────────────────────────
+    from app.repositories.usuario_rol import UsuarioRolRepository  # avoid cycle
+
+    repo = UsuarioRolRepository(session, usuario.tenant_id)
+    permisos_efectivos = await repo.get_permisos_efectivos(usuario.id)
+
+    # Resolve role codes for the user (active assignments only)
+    from sqlalchemy import and_, or_
+    from datetime import date
+    from app.models.usuario_rol import UsuarioRol
+    from app.models.rol import Rol
+
+    today = date.today()
+    roles_stmt = (
+        select(Rol.codigo)
+        .join(UsuarioRol, UsuarioRol.rol_id == Rol.id)
+        .where(
+            UsuarioRol.usuario_id == usuario.id,
+            UsuarioRol.tenant_id == usuario.tenant_id,
+            UsuarioRol.deleted_at.is_(None),
+            UsuarioRol.vig_desde <= today,
+            or_(
+                UsuarioRol.vig_hasta.is_(None),
+                UsuarioRol.vig_hasta >= today,
+            ),
+        )
+        .distinct()
+    )
+    roles_result = await session.execute(roles_stmt)
+    roles = list(roles_result.scalars().all())
+
+    return UsuarioAutenticado(
+        user_id=usuario.id,
+        tenant_id=usuario.tenant_id,
+        roles=roles,
+        permisos_efectivos=permisos_efectivos,
+    )
 
 
 # Convenience type aliases for routers
 DBSession = Annotated[AsyncSession, Depends(get_db)]
-CurrentUser = Annotated[Usuario, Depends(get_current_user)]
+CurrentUser = Annotated[UsuarioAutenticado, Depends(get_current_user)]
