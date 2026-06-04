@@ -237,7 +237,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
 ## FASE 3 — Identidad, Asignaciones y Estructura Documental
 
 ### [C-07] `usuarios-y-asignaciones`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completo
 - **Scope**:
   - Modelo `Usuario` con PII **cifrada** (`email`, `dni`, `cuil`, `cbu`, `alias_cbu`); legajo como atributo de negocio opcional (no PK, no credencial).
   - Modelo `Asignacion` (Usuario ↔ Rol ↔ contexto: materia/carrera/cohorte/comisiones), `responsable_id` (jerarquía), vigencia `desde/hasta`, `estado_vigencia` derivado.
@@ -254,7 +254,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `docs/ARQUITECTURA.md` §5, §6 (PII cifrada AES-256)
 
 ### [C-17] `programas-y-fechas-academicas`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completo
 - **Scope**:
   - Modelos: `ProgramaMateria` (documento por materia × carrera × cohorte, `referencia_archivo` al almacenamiento), `FechaAcademica` (parciales/TP/coloquios por materia × cohorte × número).
   - `/api/programas` (upload + asociar, `estructura:gestionar`) y `/api/fechas-academicas` (CRUD, listado tabular + calendario).
@@ -387,7 +387,7 @@ C-01 → C-02 → C-03 → C-04 → C-06 → C-07 → C-09 → C-10 → C-11 →
   - `knowledge-base/07_flujos_principales.md` FL-07 (coloquio)
 
 ### [C-15] `avisos-y-acknowledgment`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completo
 - **Scope**:
   - Modelos `Aviso` (alcance Global/PorMateria/PorCohorte/PorRol, severidad, vigencia inicio/fin, orden, requiere_ack) y `AcknowledgmentAviso`.
   - ABM avisos (F3.5): `avisos:publicar` (COORDINADOR/ADMIN). Visualización por destinatario según rol/alcance/cohorte (RN-18/19/20).

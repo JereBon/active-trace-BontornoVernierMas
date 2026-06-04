@@ -17,6 +17,11 @@ from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.carrera import Carrera  # noqa: F401
 from app.models.cohorte import Cohorte  # noqa: F401
 from app.models.materia import Materia  # noqa: F401
+from app.models.aviso import Aviso  # noqa: F401
+from app.models.aviso_ack import AvisoAck  # noqa: F401
+from app.models.programa_materia import ProgramaMateria  # noqa: F401
+from app.models.fecha_academica import FechaAcademica, TipoEvaluacion  # noqa: F401
+from app.models.asignacion import Asignacion  # noqa: F401
 
 __all__ = [
     "Base",
@@ -34,4 +39,10 @@ __all__ = [
     "Carrera",
     "Cohorte",
     "Materia",
+    "Aviso",
+    "AvisoAck",
+    "ProgramaMateria",
+    "FechaAcademica",
+    "TipoEvaluacion",
+    "Asignacion",
 ]

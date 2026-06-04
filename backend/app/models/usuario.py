@@ -1,11 +1,16 @@
-"""models/usuario.py — Usuario model for authentication (C-03).
+"""models/usuario.py — Usuario model (auth + full PII profile).
 
-Contains only auth-related fields. Full profile (PII, legajo) added in C-07.
+C-03: auth fields (email_cifrado, email_hash, password_hash, totp_*, activo).
+C-07: PII profile fields (nombre, apellidos, dni_cifrado, cuil_cifrado,
+      cbu_cifrado, alias_cbu_cifrado, banco, regional, legajo,
+      legajo_profesional, facturador). All nullable for backward compatibility.
 
-Design decisions (C-03 design.md D-02):
+Design decisions:
 - email stored encrypted (AES-256-GCM via crypto.py); random nonce means same
   email encrypts to different blobs — not directly comparable in SQL.
 - email_hash: SHA-256(email.lower()) stored as hex string for indexed lookup.
+- All PII fields ending in '_cifrado' are AES-256-GCM encrypted blobs.
+  Repositories (not models) handle encrypt/decrypt.
 - totp_secret_cifrado: encrypted TOTP secret; NULL when 2FA not enrolled.
 - totp_activo: True only after enrollment is confirmed.
 """
@@ -17,10 +22,7 @@ from app.models.base import Base, TenantScopedMixin
 
 
 class Usuario(Base, TenantScopedMixin):
-    """User account — auth fields only.
-
-    Full profile columns (nombre, apellido, legajo, etc.) come in C-07.
-    """
+    """User account — auth fields + full PII profile (C-03 + C-07)."""
 
     __tablename__ = "usuarios"
 
@@ -30,7 +32,7 @@ class Usuario(Base, TenantScopedMixin):
         UniqueConstraint("tenant_id", "email_hash", name="uq_usuarios_tenant_email_hash"),
     )
 
-    # ── Auth fields ───────────────────────────────────────────────────────────
+    # ── Auth fields (C-03) ────────────────────────────────────────────────────
 
     email_cifrado: Mapped[str] = mapped_column(
         Text,
@@ -72,4 +74,84 @@ class Usuario(Base, TenantScopedMixin):
         default=True,
         server_default="true",
         comment="Soft-disable flag; inactive users cannot authenticate.",
+    )
+
+    # ── PII profile fields (C-07) ─────────────────────────────────────────────
+    # All nullable: pre-existing auth-only users have NULL profile fields.
+
+    nombre: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="First name (plaintext).",
+    )
+
+    apellidos: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="Last name(s) (plaintext).",
+    )
+
+    dni_cifrado: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        comment="AES-256-GCM encrypted national ID (DNI).",
+    )
+
+    cuil_cifrado: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        comment="AES-256-GCM encrypted tax ID (CUIL).",
+    )
+
+    cbu_cifrado: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        comment="AES-256-GCM encrypted bank account key (CBU).",
+    )
+
+    alias_cbu_cifrado: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        comment="AES-256-GCM encrypted CBU alias.",
+    )
+
+    banco: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="Bank name (plaintext).",
+    )
+
+    regional: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="Institutional delegation / branch (plaintext).",
+    )
+
+    legajo: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="Institutional record number (business attribute, not PK).",
+    )
+
+    legajo_profesional: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="Professional college / registry record number.",
+    )
+
+    facturador: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True,
+        default=None,
+        comment="True if the user issues invoices (monotributo / etc.).",
     )
