@@ -99,3 +99,11 @@ class Calificacion(Base, TenantScopedMixin):
         nullable=False,
         comment="Timestamp when the grade was last imported/set.",
     )
+
+    finalizado_lms: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="FALSE",
+        comment="True when LMS reports the student finalised the activity but no grade is present (RN-07).",
+    )
