@@ -24,6 +24,10 @@ from app.models.fecha_academica import FechaAcademica, TipoEvaluacion  # noqa: F
 from app.models.asignacion import Asignacion  # noqa: F401
 from app.models.version_padron import VersionPadron  # noqa: F401
 from app.models.entrada_padron import EntradaPadron  # noqa: F401
+from app.models.encuentro import SlotEncuentro, InstanciaEncuentro  # noqa: F401
+from app.models.guardia import Guardia  # noqa: F401
+from app.models.calificacion import Calificacion  # noqa: F401
+from app.models.umbral_materia import UmbralMateria  # noqa: F401
 
 __all__ = [
     "Base",
@@ -49,4 +53,9 @@ __all__ = [
     "Asignacion",
     "VersionPadron",
     "EntradaPadron",
+    "SlotEncuentro",
+    "InstanciaEncuentro",
+    "Guardia",
+    "Calificacion",
+    "UmbralMateria",
 ]
