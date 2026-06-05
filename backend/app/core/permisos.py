@@ -20,6 +20,7 @@ AVISOS_PUBLICAR = "avisos:publicar"
 
 # ── Calificaciones ────────────────────────────────────────────────────────────
 CALIFICACIONES_IMPORTAR = "calificaciones:importar"
+CALIFICACIONES_UMBRAL = "calificaciones:umbral"
 
 # ── Atrasados ─────────────────────────────────────────────────────────────────
 ATRASADOS_VER = "atrasados:ver"
@@ -79,6 +80,7 @@ ALL_PERMISOS: frozenset[str] = frozenset(
         AVISOS_CONFIRMAR,
         AVISOS_PUBLICAR,
         CALIFICACIONES_IMPORTAR,
+        CALIFICACIONES_UMBRAL,
         ATRASADOS_VER,
         ENTREGAS_VER_SIN_CORREGIR,
         COMUNICACION_ENVIAR,

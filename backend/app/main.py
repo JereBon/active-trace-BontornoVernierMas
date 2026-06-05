@@ -93,6 +93,9 @@ def create_application() -> FastAPI:
     from app.api.v1.routers.usuarios import router as usuarios_router
     from app.api.v1.routers.padron import router as padron_router
     from app.api.v1.routers.equipos import router as equipos_router
+    from app.api.v1.routers.encuentros import router as encuentros_router
+    from app.api.v1.routers.guardias import router as guardias_router
+    from app.api.v1.routers.calificaciones import router as calificaciones_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
@@ -105,6 +108,9 @@ def create_application() -> FastAPI:
     application.include_router(usuarios_router)
     application.include_router(padron_router)
     application.include_router(equipos_router)
+    application.include_router(encuentros_router)
+    application.include_router(guardias_router)
+    application.include_router(calificaciones_router)
 
     # ── Exception handlers ────────────────────────────────────────────────────
     from app.core.exceptions import register_exception_handlers
