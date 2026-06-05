@@ -65,6 +65,11 @@ TENANT_CONFIGURAR = "tenant:configurar"
 # ── Impersonación ─────────────────────────────────────────────────────────────
 IMPERSONACION_USAR = "impersonacion:usar"
 
+# ── Padrón ────────────────────────────────────────────────────────────────────
+PADRON_LEER = "padron:leer"
+PADRON_CARGAR = "padron:cargar"
+PADRON_VACIAR = "padron:vaciar"
+
 
 # ── Full catalogue (used by tests / seed validation) ─────────────────────────
 ALL_PERMISOS: frozenset[str] = frozenset(
@@ -90,5 +95,8 @@ ALL_PERMISOS: frozenset[str] = frozenset(
         FACTURAS_GESTIONAR,
         TENANT_CONFIGURAR,
         IMPERSONACION_USAR,
+        PADRON_LEER,
+        PADRON_CARGAR,
+        PADRON_VACIAR,
     }
 )
