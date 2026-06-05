@@ -22,6 +22,8 @@ from app.models.aviso_ack import AvisoAck  # noqa: F401
 from app.models.programa_materia import ProgramaMateria  # noqa: F401
 from app.models.fecha_academica import FechaAcademica, TipoEvaluacion  # noqa: F401
 from app.models.asignacion import Asignacion  # noqa: F401
+from app.models.version_padron import VersionPadron  # noqa: F401
+from app.models.entrada_padron import EntradaPadron  # noqa: F401
 
 __all__ = [
     "Base",
@@ -45,4 +47,6 @@ __all__ = [
     "FechaAcademica",
     "TipoEvaluacion",
     "Asignacion",
+    "VersionPadron",
+    "EntradaPadron",
 ]
