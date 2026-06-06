@@ -29,6 +29,7 @@ from app.models.guardia import Guardia  # noqa: F401
 from app.models.calificacion import Calificacion  # noqa: F401
 from app.models.umbral_materia import UmbralMateria  # noqa: F401
 from app.models.comunicacion import Comunicacion, EstadoComunicacion  # noqa: F401
+from app.models.tarea import Tarea, ComentarioTarea  # noqa: F401
 
 __all__ = [
     "Base",
@@ -61,4 +62,6 @@ __all__ = [
     "UmbralMateria",
     "Comunicacion",
     "EstadoComunicacion",
+    "Tarea",
+    "ComentarioTarea",
 ]
