@@ -47,6 +47,16 @@ class Tenant(Base):
         default=True,
         server_default="true",
     )
+    comunicacion_requiere_aprobacion: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+        comment=(
+            "When True, bulk sends (>1 recipient) require explicit approval "
+            "from comunicacion:aprobar before the worker dispatches them."
+        ),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

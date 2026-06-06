@@ -15,6 +15,7 @@ Design decisions:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -25,6 +26,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.logging import configure_logging
 
 logger = logging.getLogger(__name__)
+
+# Module-level worker reference for graceful shutdown
+_worker_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
@@ -47,9 +51,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     validate_key()
     logger.info("Encryption key validated")
 
+    # ── Start communication worker (C-12) ─────────────────────────────────────
+    global _worker_task
+    from app.core.database import async_session_factory as _sf
+    from workers.comunicacion_worker import ComunicacionWorker
+
+    if _sf is not None:
+        _worker = ComunicacionWorker(_sf)
+        _worker_task = asyncio.create_task(_worker.run_forever())
+        logger.info("ComunicacionWorker background task started")
+
     yield  # application runs here
 
     # ── Shutdown ─────────────────────────────────────────────────────────────
+    # Stop the worker gracefully
+    if _worker_task is not None and not _worker_task.done():
+        _worker_task.cancel()
+        try:
+            await _worker_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("ComunicacionWorker stopped")
+
     from app.core.database import dispose_engine
 
     await dispose_engine()
@@ -97,6 +120,7 @@ def create_application() -> FastAPI:
     from app.api.v1.routers.guardias import router as guardias_router
     from app.api.v1.routers.calificaciones import router as calificaciones_router
     from app.api.v1.routers.analisis import router as analisis_router
+    from app.api.v1.routers.comunicaciones import router as comunicaciones_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
@@ -113,6 +137,7 @@ def create_application() -> FastAPI:
     application.include_router(guardias_router)
     application.include_router(calificaciones_router)
     application.include_router(analisis_router)
+    application.include_router(comunicaciones_router)
 
     # ── Exception handlers ────────────────────────────────────────────────────
     from app.core.exceptions import register_exception_handlers
