@@ -11,6 +11,14 @@ import { AtrasadosPage } from '@/features/comision/pages/AtrasadosPage'
 import { SinCorregirPage } from '@/features/comision/pages/SinCorregirPage'
 import { ComunicacionPage } from '@/features/comision/pages/ComunicacionPage'
 import { MonitorPage } from '@/features/comision/pages/MonitorPage'
+import { CoordinacionLayout } from '@/features/coordinacion/pages/CoordinacionLayout'
+import { EquiposPage } from '@/features/coordinacion/pages/EquiposPage'
+import { AvisosPage } from '@/features/coordinacion/pages/AvisosPage'
+import { TareasPage } from '@/features/coordinacion/pages/TareasPage'
+import { MonitorGlobalPage } from '@/features/coordinacion/pages/MonitorGlobalPage'
+import { EncuentrosPage } from '@/features/coordinacion/pages/EncuentrosPage'
+import { ColoquiosPage } from '@/features/coordinacion/pages/ColoquiosPage'
+import { CuatrimestrePage } from '@/features/coordinacion/pages/CuatrimestrePage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +56,18 @@ export default function App() {
                 <Route path="sin-corregir" element={<SinCorregirPage />} />
                 <Route path="comunicacion" element={<ComunicacionPage />} />
                 <Route path="monitor" element={<MonitorPage />} />
+              </Route>
+
+              {/* Coordinacion feature — /coordinacion/* (COORDINADOR/ADMIN) */}
+              <Route path="/coordinacion" element={<CoordinacionLayout />}>
+                <Route index element={<Navigate to="equipos" replace />} />
+                <Route path="equipos" element={<EquiposPage />} />
+                <Route path="avisos" element={<AvisosPage />} />
+                <Route path="tareas" element={<TareasPage />} />
+                <Route path="monitor" element={<MonitorGlobalPage />} />
+                <Route path="encuentros" element={<EncuentrosPage />} />
+                <Route path="coloquios" element={<ColoquiosPage />} />
+                <Route path="cuatrimestre" element={<CuatrimestrePage />} />
               </Route>
 
               {/* Redirect root to dashboard */}
