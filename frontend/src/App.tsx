@@ -5,6 +5,12 @@ import { AuthGuard } from '@/features/auth/components/AuthGuard'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { AppShell } from '@/shared/components/AppShell'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
+import { ComisionLayout } from '@/features/comision/pages/ComisionLayout'
+import { ImportacionPage } from '@/features/comision/pages/ImportacionPage'
+import { AtrasadosPage } from '@/features/comision/pages/AtrasadosPage'
+import { SinCorregirPage } from '@/features/comision/pages/SinCorregirPage'
+import { ComunicacionPage } from '@/features/comision/pages/ComunicacionPage'
+import { MonitorPage } from '@/features/comision/pages/MonitorPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +39,17 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<DashboardPage />} />
+
+              {/* Comision feature — /comision/:materiaId/* */}
+              <Route path="/comision/:materiaId" element={<ComisionLayout />}>
+                <Route index element={<Navigate to="atrasados" replace />} />
+                <Route path="importacion" element={<ImportacionPage />} />
+                <Route path="atrasados" element={<AtrasadosPage />} />
+                <Route path="sin-corregir" element={<SinCorregirPage />} />
+                <Route path="comunicacion" element={<ComunicacionPage />} />
+                <Route path="monitor" element={<MonitorPage />} />
+              </Route>
+
               {/* Redirect root to dashboard */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
