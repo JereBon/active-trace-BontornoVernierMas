@@ -11,8 +11,10 @@ These strings MUST match the 'codigo' column values seeded by 0003_rbac.py.
 # ── Académico ────────────────────────────────────────────────────────────────
 ACADEMICO_VER_PROPIO = "academico:ver_propio"
 
-# ── Evaluaciones ─────────────────────────────────────────────────────────────
+# ── Evaluaciones (coloquios) ──────────────────────────────────────────────────
 EVALUACIONES_RESERVAR = "evaluaciones:reservar"
+EVALUACIONES_GESTIONAR = "evaluaciones:gestionar"
+EVALUACIONES_RESULTADO = "evaluaciones:resultado"
 
 # ── Avisos ────────────────────────────────────────────────────────────────────
 AVISOS_CONFIRMAR = "avisos:confirmar"
@@ -77,6 +79,8 @@ ALL_PERMISOS: frozenset[str] = frozenset(
     {
         ACADEMICO_VER_PROPIO,
         EVALUACIONES_RESERVAR,
+        EVALUACIONES_GESTIONAR,
+        EVALUACIONES_RESULTADO,
         AVISOS_CONFIRMAR,
         AVISOS_PUBLICAR,
         CALIFICACIONES_IMPORTAR,
