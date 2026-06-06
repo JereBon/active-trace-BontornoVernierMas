@@ -34,6 +34,10 @@ COPY --from=builder /build/.venv /app/.venv
 
 # Copy application source
 COPY app/ ./app/
+COPY workers/ ./workers/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
+COPY scripts/ ./scripts/
 
 # Activate venv by prepending to PATH
 ENV PATH="/app/.venv/bin:$PATH" \
