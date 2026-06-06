@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Especificación del shell base del frontend de active-trace: estructura del proyecto, cliente HTTP centralizado, auth guard, layout principal y providers globales para todos los módulos futuros.
+
+## Requirements
 
 ### Requirement: Estructura de proyecto frontend
 El sistema SHALL tener un proyecto frontend en `frontend/` con Vite + React 18 + TypeScript siguiendo la estructura feature-based: `src/features/{name}/{components,hooks,services,types,pages}` y `src/shared/{services,components,utils}`.
