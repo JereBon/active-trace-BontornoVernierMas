@@ -1,14 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { Navbar } from '@/shared/components/Navbar'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 
-const SIDEBAR_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard' },
-  // Comision requires a materiaId — navigating to monitor (no materia filter)
-  // is the entry point for COORDINADOR/ADMIN to see all.
-  { to: '/comision/placeholder/monitor', label: 'Comisión' },
-]
+const COORDINACION_ROLES = ['COORDINADOR', 'ADMIN']
 
 export function AppShell() {
+  const { user } = useAuth()
+
+  const isCoordinadorOrAdmin =
+    user?.roles?.some((r) => COORDINACION_ROLES.includes(r)) ?? false
+
   return (
     <div className="flex h-screen flex-col bg-gray-50">
       <Navbar />
@@ -20,22 +21,55 @@ export function AppShell() {
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
               Menú
             </p>
-            {SIDEBAR_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  [
-                    'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
-                    isActive
-                      ? 'bg-blue-50 font-medium text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                  ].join(' ')
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                [
+                  'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-50 font-medium text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                ].join(' ')
+              }
+            >
+              Dashboard
+            </NavLink>
+
+            <NavLink
+              to="/comision/placeholder/monitor"
+              className={({ isActive }) =>
+                [
+                  'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-50 font-medium text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                ].join(' ')
+              }
+            >
+              Comisión
+            </NavLink>
+
+            {isCoordinadorOrAdmin && (
+              <>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Coordinación
+                </p>
+                <NavLink
+                  to="/coordinacion"
+                  className={({ isActive }) =>
+                    [
+                      'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                      isActive
+                        ? 'bg-blue-50 font-medium text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    ].join(' ')
+                  }
+                >
+                  Coordinación
+                </NavLink>
+              </>
+            )}
           </nav>
         </aside>
 
