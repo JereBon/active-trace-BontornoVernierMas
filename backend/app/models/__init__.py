@@ -28,6 +28,7 @@ from app.models.encuentro import SlotEncuentro, InstanciaEncuentro  # noqa: F401
 from app.models.guardia import Guardia  # noqa: F401
 from app.models.calificacion import Calificacion  # noqa: F401
 from app.models.umbral_materia import UmbralMateria  # noqa: F401
+from app.models.comunicacion import Comunicacion, EstadoComunicacion  # noqa: F401
 
 __all__ = [
     "Base",
@@ -58,4 +59,6 @@ __all__ = [
     "Guardia",
     "Calificacion",
     "UmbralMateria",
+    "Comunicacion",
+    "EstadoComunicacion",
 ]
