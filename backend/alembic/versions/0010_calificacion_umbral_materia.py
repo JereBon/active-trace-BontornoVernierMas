@@ -260,7 +260,7 @@ def _seed_calificaciones_permissions(conn: sa.engine.Connection) -> None:
     tenant_ids = [
         r[0]
         for r in conn.execute(
-            sa.text("SELECT id FROM tenants WHERE deleted_at IS NULL")
+            sa.text("SELECT id FROM tenants")
         ).fetchall()
     ]
 

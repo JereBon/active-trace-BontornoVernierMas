@@ -102,15 +102,19 @@ class UsuarioRepository(BaseRepository[Usuario]):
     # ── Reads ─────────────────────────────────────────────────────────────────
 
     async def get_by_email_hash(self, email_hash: str) -> Usuario | None:
-        """Return the active usuario matching the given email hash in this tenant."""
-        stmt = (
-            select(Usuario)
-            .where(
-                Usuario.tenant_id == self._tenant_id,
-                Usuario.email_hash == email_hash,
-                Usuario.deleted_at.is_(None),
-            )
-        )
+        """Return the active usuario matching the given email hash.
+
+        If tenant_id is the nil UUID (all-zeros), searches across ALL tenants.
+        This supports the login endpoint before the tenant is resolved.
+        """
+        import uuid as _uuid
+        conditions = [
+            Usuario.email_hash == email_hash,
+            Usuario.deleted_at.is_(None),
+        ]
+        if self._tenant_id != _uuid.UUID(int=0):
+            conditions.append(Usuario.tenant_id == self._tenant_id)
+        stmt = select(Usuario).where(*conditions)
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 

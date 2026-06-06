@@ -22,6 +22,7 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from app.core.logging import configure_logging
 
@@ -87,7 +88,12 @@ def create_application() -> FastAPI:
     """
     application = FastAPI(
         title="activia-trace API",
-        description="Plataforma de gestión académica multi-tenant",
+        description=(
+            "Plataforma de gestión académica multi-tenant.\n\n"
+            "**Para autenticar:** Obtené el token con `POST /api/auth/login` "
+            "(incluí el header `X-Tenant-Id: 00000000-0000-0000-0000-000000000001`), "
+            "luego pegá el `access_token` en el candado 🔒 → campo **Value** → `Bearer <token>`."
+        ),
         version="0.1.0",
         lifespan=lifespan,
         docs_url="/docs",
@@ -149,6 +155,30 @@ def create_application() -> FastAPI:
     from app.core.observability import configure_otel
 
     configure_otel(application)
+
+    # ── Swagger: add HTTPBearer so users can paste the JWT directly ───────────
+    def custom_openapi():
+        if application.openapi_schema:
+            return application.openapi_schema
+        schema = get_openapi(
+            title=application.title,
+            version=application.version,
+            description=application.description,
+            routes=application.routes,
+        )
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})
+        schema["components"]["securitySchemes"]["BearerAuth"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+        for path in schema.get("paths", {}).values():
+            for op in path.values():
+                op.setdefault("security", []).append({"BearerAuth": []})
+        application.openapi_schema = schema
+        return schema
+
+    application.openapi = custom_openapi  # type: ignore[method-assign]
 
     return application
 
