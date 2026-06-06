@@ -55,7 +55,7 @@ export function ActividadesSelector({
         file,
         actividadesSeleccionadas: Array.from(selected),
       },
-      { onSuccess: onImportado },
+      { onSuccess: (data) => onImportado(data) },
     )
   }
 

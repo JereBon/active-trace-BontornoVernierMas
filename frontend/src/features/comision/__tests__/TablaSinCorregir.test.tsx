@@ -66,11 +66,11 @@ describe('TablaSinCorregir', () => {
   // Triangulation: clicking export creates a Blob URL
   it('calls URL.createObjectURL when export button is clicked', async () => {
     const mockClick = vi.fn()
-    vi.spyOn(document, 'createElement').mockReturnValueOnce({
-      href: '',
-      download: '',
-      click: mockClick,
-    } as unknown as HTMLAnchorElement)
+    const origCreate = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string, ...rest: []) => {
+      if (tag === 'a') return { href: '', download: '', click: mockClick } as unknown as HTMLAnchorElement
+      return origCreate(tag, ...rest)
+    })
 
     mockGetSinCorregir.mockResolvedValueOnce([
       {

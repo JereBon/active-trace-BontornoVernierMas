@@ -63,8 +63,6 @@ export function UmbralForm({ materiaId, asignacionId, onGuardado }: Props) {
         <input
           id="umbral_pct"
           type="number"
-          min={0}
-          max={100}
           {...register('umbral_pct', { valueAsNumber: true })}
           className="mt-1 block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
         />
