@@ -3,12 +3,18 @@ import { Navbar } from '@/shared/components/Navbar'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
 const COORDINACION_ROLES = ['COORDINADOR', 'ADMIN']
+const FINANZAS_ROLES = ['FINANZAS', 'ADMIN']
+const ADMIN_ROLES = ['ADMIN']
 
 export function AppShell() {
   const { user } = useAuth()
 
   const isCoordinadorOrAdmin =
     user?.roles?.some((r) => COORDINACION_ROLES.includes(r)) ?? false
+  const isFinanzas =
+    user?.roles?.some((r) => FINANZAS_ROLES.includes(r)) ?? false
+  const isAdmin =
+    user?.roles?.some((r) => ADMIN_ROLES.includes(r)) ?? false
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
@@ -67,6 +73,48 @@ export function AppShell() {
                   }
                 >
                   Coordinación
+                </NavLink>
+              </>
+            )}
+
+            {isFinanzas && (
+              <>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Finanzas
+                </p>
+                <NavLink
+                  to="/finanzas"
+                  className={({ isActive }) =>
+                    [
+                      'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                      isActive
+                        ? 'bg-blue-50 font-medium text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    ].join(' ')
+                  }
+                >
+                  Finanzas
+                </NavLink>
+              </>
+            )}
+
+            {isAdmin && (
+              <>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Admin
+                </p>
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) =>
+                    [
+                      'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                      isActive
+                        ? 'bg-blue-50 font-medium text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    ].join(' ')
+                  }
+                >
+                  Administración
                 </NavLink>
               </>
             )}
