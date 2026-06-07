@@ -43,3 +43,14 @@ class Materia(Base, TenantScopedMixin):
         server_default=EstadoEntidad.Activa.value,
         comment="Activa | Inactiva",
     )
+
+    # ── C-18: liquidaciones-y-honorarios ─────────────────────────────────────
+    # categoria_clave is used by LiquidacionService to resolve the SalarioPlus
+    # group (grupo) for this subject. NULL means no Plus is generated for
+    # commissions in this subject (not an error, per D2 of C-18 design.md).
+    categoria_clave: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        default=None,
+        comment="Plus group key (e.g. 'PROG', 'CALC'); NULL = no Plus generated.",
+    )

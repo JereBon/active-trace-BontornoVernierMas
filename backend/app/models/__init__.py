@@ -39,6 +39,10 @@ from app.models.evaluacion import (  # noqa: F401
     TipoEvaluacionColoquio,
 )
 from app.models.mensaje_interno import MensajeInterno  # noqa: F401
+from app.models.salario_base import SalarioBase  # noqa: F401
+from app.models.salario_plus import SalarioPlus  # noqa: F401
+from app.models.liquidacion import Liquidacion, EstadoLiquidacion  # noqa: F401
+from app.models.factura import Factura, EstadoFactura  # noqa: F401
 
 __all__ = [
     "Base",
@@ -80,4 +84,10 @@ __all__ = [
     "EstadoReserva",
     "TipoEvaluacionColoquio",
     "MensajeInterno",
+    "SalarioBase",
+    "SalarioPlus",
+    "Liquidacion",
+    "EstadoLiquidacion",
+    "Factura",
+    "EstadoFactura",
 ]
