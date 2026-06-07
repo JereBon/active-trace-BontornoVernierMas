@@ -38,6 +38,7 @@ from app.models.evaluacion import (  # noqa: F401
     EstadoReserva,
     TipoEvaluacionColoquio,
 )
+from app.models.mensaje_interno import MensajeInterno  # noqa: F401
 
 __all__ = [
     "Base",
@@ -78,4 +79,5 @@ __all__ = [
     "EstadoEvaluacion",
     "EstadoReserva",
     "TipoEvaluacionColoquio",
+    "MensajeInterno",
 ]
