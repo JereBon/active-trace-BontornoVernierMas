@@ -131,6 +131,7 @@ def create_application() -> FastAPI:
     from app.api.v1.routers.coloquios import router as coloquios_router
     from app.api.v1.routers.perfil import router as perfil_router
     from app.api.v1.routers.inbox import router as inbox_router
+    from app.api.v1.routers.auditoria import router as auditoria_router
 
     application.include_router(health_router)
     application.include_router(auth_router)
@@ -152,6 +153,7 @@ def create_application() -> FastAPI:
     application.include_router(coloquios_router)
     application.include_router(perfil_router)
     application.include_router(inbox_router)
+    application.include_router(auditoria_router)
 
     # ── Exception handlers ────────────────────────────────────────────────────
     from app.core.exceptions import register_exception_handlers
