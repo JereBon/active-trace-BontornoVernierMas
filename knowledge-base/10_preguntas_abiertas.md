@@ -38,30 +38,23 @@ Las cohortes (ej.: "MAR-2026") pueden pertenecer a una carrera específica o ser
 
 ---
 
-### PA-22 — ¿Cuántas claves de Plus existen y cómo se mapean a materias?
+### ~~PA-22~~ — CERRADA
 
-El modelo de liquidación define un **Plus** por combinación `(clave, rol)`, donde la clave agrupa familias de materias (ej.: `PROG` para materias de Programación). Ver [RN-31](05_reglas_de_negocio.md#rn-31) a [RN-38](05_reglas_de_negocio.md#rn-38).
-
-**Preguntas abiertas**:
-
-- ¿Cuáles son todas las claves de Plus que existen en el dominio (ej.: `PROG`, `BD`, `ING`, `MAT`, etc.)?
-- ¿Qué materia cae en qué clave? ¿Hay materias sin clave asignada?
-- ¿Ese mapeo es configurable por tenant o está fijo para toda la plataforma?
-- ¿Lo define el ADMIN del tenant o viene preconfigurado desde la institución?
+**Resolución** (2026-06-07):
+- Las claves de grupo son **texto libre configurable por tenant** (FINANZAS/ADMIN). No hay catálogo fijo en el sistema.
+- El mapeo materia→clave vive como **campo `categoria_clave: str | None` en la entidad `Materia`**. El ADMIN asigna la clave desde el ABM de materias. Sin tabla separada.
+- Una materia sin `categoria_clave` (NULL) **no genera Plus** para el docente — solo contribuye al Base. No bloquea la liquidación.
+- Documentado en: `E18 SalarioPlus` (`04_modelo_de_datos.md`), campo `categoria_clave` en `E3 Materia`.
 
 ---
 
-### PA-23 — ¿Cómo se calcula el Plus cuando un docente tiene N comisiones de la misma clave?
+### ~~PA-23~~ — CERRADA
 
-Si un PROFESOR tiene tres comisiones de materias que caen bajo la clave `PROG`:
-
-**Preguntas abiertas**:
-
-- ¿Se acumula `3 × Plus(PROG, PROFESOR)` o se aplica una sola vez sin importar la cantidad de comisiones?
-- ¿Existe un tope de acumulación?
-- ¿La lógica cambia según el rol (TUTOR vs. PROFESOR vs. COORDINADOR)?
-
-**Impacto**: es la regla de negocio central del módulo de liquidaciones. Sin ella no se puede implementar el cálculo.
+**Resolución** (2026-06-07):
+- **Acumulación lineal sin tope**: si un docente tiene N comisiones de materias con la misma clave, acumula `N × Plus(clave, rol)`.
+- La lógica es uniforme para todos los roles (TUTOR, PROFESOR, NEXO, COORDINADOR).
+- Fórmula confirmada por RN-33 y RN-34: `Total = Base(rol) + Σ(Plus(clave, rol) × N_comisiones_por_clave)`.
+- Documentado en: RN-33, RN-34 (`05_reglas_de_negocio.md`).
 
 ---
 
@@ -243,6 +236,8 @@ Las siguientes preguntas que existían en versiones anteriores de este documento
 | PA-04 | Login por email + contraseña; 2FA opcional (TOTP); recuperación por token de un solo uso; alta solo administrativa en MVP | [07_flujos_principales.md](07_flujos_principales.md), [`docs/ARQUITECTURA.md` §5.1](../docs/ARQUITECTURA.md) |
 | PA-06 | Fórmula de liquidación: Base (por rol) + Plus (por clave × rol); ver RN-31 a RN-38 | [05_reglas_de_negocio.md](05_reglas_de_negocio.md) |
 | PA-21 | Impersonación via parámetro de petición: eliminada. La impersonación legítima requiere permiso explícito, sesión diferenciada y auditoría completa | [03_actores_y_roles.md §4](03_actores_y_roles.md), [`docs/ARQUITECTURA.md`](../docs/ARQUITECTURA.md) |
+| PA-22 | Claves de grupo texto libre por tenant; campo `categoria_clave: str \| None` en `Materia`; NULL → no genera Plus, no bloquea | `04_modelo_de_datos.md` §E18, §E3 |
+| PA-23 | Acumulación lineal sin tope: N comisiones × Plus(clave, rol). Uniforme para todos los roles | `05_reglas_de_negocio.md` RN-33, RN-34 |
 
 ---
 
