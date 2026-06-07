@@ -19,6 +19,16 @@ import { MonitorGlobalPage } from '@/features/coordinacion/pages/MonitorGlobalPa
 import { EncuentrosPage } from '@/features/coordinacion/pages/EncuentrosPage'
 import { ColoquiosPage } from '@/features/coordinacion/pages/ColoquiosPage'
 import { CuatrimestrePage } from '@/features/coordinacion/pages/CuatrimestrePage'
+// C-24: Finanzas + Admin
+import { FinanzasLayout } from '@/features/finanzas/pages/FinanzasLayout'
+import { PeriodoPage } from '@/features/finanzas/pages/PeriodoPage'
+import { HistorialPage } from '@/features/finanzas/pages/HistorialPage'
+import { GrillaPage } from '@/features/finanzas/pages/GrillaPage'
+import { FacturasPage } from '@/features/finanzas/pages/FacturasPage'
+import { AdminLayout } from '@/features/admin/pages/AdminLayout'
+import { EstructuraPage } from '@/features/admin/pages/EstructuraPage'
+import { UsuariosPage } from '@/features/admin/pages/UsuariosPage'
+import { AuditoriaPage } from '@/features/admin/pages/AuditoriaPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +78,23 @@ export default function App() {
                 <Route path="encuentros" element={<EncuentrosPage />} />
                 <Route path="coloquios" element={<ColoquiosPage />} />
                 <Route path="cuatrimestre" element={<CuatrimestrePage />} />
+              </Route>
+
+              {/* Finanzas feature — /finanzas/* (FINANZAS role) */}
+              <Route path="/finanzas" element={<FinanzasLayout />}>
+                <Route index element={<Navigate to="periodo" replace />} />
+                <Route path="periodo" element={<PeriodoPage />} />
+                <Route path="historial" element={<HistorialPage />} />
+                <Route path="grilla" element={<GrillaPage />} />
+                <Route path="facturas" element={<FacturasPage />} />
+              </Route>
+
+              {/* Admin feature — /admin/* (ADMIN role) */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="estructura" replace />} />
+                <Route path="estructura" element={<EstructuraPage />} />
+                <Route path="usuarios" element={<UsuariosPage />} />
+                <Route path="auditoria" element={<AuditoriaPage />} />
               </Route>
 
               {/* Redirect root to dashboard */}
