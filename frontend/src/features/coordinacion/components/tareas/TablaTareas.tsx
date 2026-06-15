@@ -1,12 +1,14 @@
 // features/coordinacion/components/tareas/TablaTareas.tsx
 import { useState } from 'react'
 import { useTareas } from '../../hooks/useTareas'
-import type { Tarea, TareaEstado, TareaPrioridad } from '../../types'
+import type { Tarea, TareaEstado } from '../../types'
+import { useUsuarios } from '@/features/admin/hooks/useUsuarios'
 
-const PRIORIDAD_CLASS: Record<TareaPrioridad, string> = {
-  baja: 'bg-gray-100 text-gray-700',
-  media: 'bg-yellow-100 text-yellow-700',
-  alta: 'bg-red-100 text-red-700',
+const ESTADO_CLASS: Record<TareaEstado, string> = {
+  Pendiente: 'bg-yellow-100 text-yellow-700',
+  En_progreso: 'bg-blue-100 text-blue-700',
+  Resuelta: 'bg-green-100 text-green-800',
+  Cancelada: 'bg-gray-100 text-gray-500',
 }
 
 interface Props {
@@ -15,7 +17,13 @@ interface Props {
 
 export function TablaTareas({ onSelect }: Props) {
   const { data: tareas = [], isLoading } = useTareas()
+  const { data: usuarios = [] } = useUsuarios()
   const [estadoFilter, setEstadoFilter] = useState<TareaEstado | ''>('')
+
+  const nombreUsuario = (id: string) => {
+    const u = usuarios.find((u) => u.id === id)
+    return u ? `${u.nombre} ${u.apellidos}` : id.slice(0, 8) + '…'
+  }
 
   if (isLoading) {
     return <p className="text-gray-500">Cargando tareas...</p>
@@ -43,9 +51,10 @@ export function TablaTareas({ onSelect }: Props) {
           aria-label="Estado"
         >
           <option value="">Todos</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="en_progreso">En Progreso</option>
-          <option value="completada">Completada</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="En_progreso">En Progreso</option>
+          <option value="Resuelta">Resuelta</option>
+          <option value="Cancelada">Cancelada</option>
         </select>
       </div>
 
@@ -57,7 +66,6 @@ export function TablaTareas({ onSelect }: Props) {
             <tr>
               <th className="px-4 py-2 text-left font-medium text-gray-600">Título</th>
               <th className="px-4 py-2 text-left font-medium text-gray-600">Estado</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-600">Prioridad</th>
               <th className="px-4 py-2 text-left font-medium text-gray-600">Asignado a</th>
             </tr>
           </thead>
@@ -69,15 +77,12 @@ export function TablaTareas({ onSelect }: Props) {
                 onClick={() => onSelect(tarea)}
               >
                 <td className="px-4 py-2 font-medium text-gray-900">{tarea.titulo}</td>
-                <td className="px-4 py-2 text-gray-600 capitalize">{tarea.estado.replace('_', ' ')}</td>
                 <td className="px-4 py-2">
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${PRIORIDAD_CLASS[tarea.prioridad]}`}
-                  >
-                    {tarea.prioridad}
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_CLASS[tarea.estado]}`}>
+                    {tarea.estado.replace('_', ' ')}
                   </span>
                 </td>
-                <td className="px-4 py-2 text-gray-600">{tarea.asignado_nombre ?? '—'}</td>
+                <td className="px-4 py-2 text-gray-600">{nombreUsuario(tarea.asignado_a)}</td>
               </tr>
             ))}
           </tbody>

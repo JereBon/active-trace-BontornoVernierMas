@@ -13,13 +13,13 @@ function FilaUsuario({ usuario }: RowProps) {
   return (
     <tr className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
       <td className="py-3 px-4 text-sm font-medium text-gray-900">
-        {usuario.apellido}, {usuario.nombre}
+        {usuario.apellidos}, {usuario.nombre}
       </td>
-      <td className="py-3 px-4 text-sm text-gray-600">{usuario.email}</td>
+      <td className="py-3 px-4 text-sm text-gray-600">{usuario.email ?? '—'}</td>
       <td className="py-3 px-4 text-sm text-gray-600">{usuario.legajo ?? '—'}</td>
       <td className="py-3 px-4 text-sm">
         <div className="flex flex-wrap gap-1">
-          {usuario.roles.map((r) => (
+          {(usuario.roles ?? []).map((r) => (
             <span
               key={r}
               className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"

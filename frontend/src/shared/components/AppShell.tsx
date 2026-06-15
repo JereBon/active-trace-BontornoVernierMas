@@ -1,13 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Navbar } from '@/shared/components/Navbar'
 import { useAuth } from '@/features/auth/hooks/useAuth'
+import { getMisAsignaciones } from '@/features/coordinacion/services/equiposService'
 
 const COORDINACION_ROLES = ['COORDINADOR', 'ADMIN']
 const FINANZAS_ROLES = ['FINANZAS', 'ADMIN']
 const ADMIN_ROLES = ['ADMIN']
 
 export function AppShell() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
 
   const isCoordinadorOrAdmin =
     user?.roles?.some((r) => COORDINACION_ROLES.includes(r)) ?? false
@@ -15,6 +17,14 @@ export function AppShell() {
     user?.roles?.some((r) => FINANZAS_ROLES.includes(r)) ?? false
   const isAdmin =
     user?.roles?.some((r) => ADMIN_ROLES.includes(r)) ?? false
+
+  const { data: asignaciones, isLoading: loadingAsignaciones } = useQuery({
+    queryKey: ['mis-asignaciones'],
+    queryFn: getMisAsignaciones,
+    enabled: isAuthenticated,
+  })
+  const primeraMateriaId = asignaciones?.[0]?.materia_id ?? null
+  const tieneComision = !loadingAsignaciones && primeraMateriaId !== null
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
@@ -42,19 +52,21 @@ export function AppShell() {
               Dashboard
             </NavLink>
 
-            <NavLink
-              to="/comision/placeholder/monitor"
-              className={({ isActive }) =>
-                [
-                  'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
-                  isActive
-                    ? 'bg-blue-50 font-medium text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                ].join(' ')
-              }
-            >
-              Comisión
-            </NavLink>
+            {tieneComision && (
+              <NavLink
+                to={`/comision/${primeraMateriaId}/monitor`}
+                className={({ isActive }) =>
+                  [
+                    'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                    isActive
+                      ? 'bg-blue-50 font-medium text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                  ].join(' ')
+                }
+              >
+                Comisión
+              </NavLink>
+            )}
 
             {isCoordinadorOrAdmin && (
               <>

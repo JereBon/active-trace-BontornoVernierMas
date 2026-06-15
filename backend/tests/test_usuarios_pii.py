@@ -6,6 +6,9 @@ TDD cycles:
   9.3  RED→GREEN:  GET /v1/me → own profile; 401 if unauthenticated
   9.4  TRIANGULATE: POST /v1/users without usuarios:gestionar → 403
   9.6  TRIANGULATE: multi-tenant isolation — tenant A cannot see tenant B users
+  10.1 RED:        PUT /v1/users/{id}/activate → 204 on inactive user
+  10.2 TRIANGULATE: activate already-active user → 204 (idempotent)
+  10.3 TRIANGULATE: activate user from another tenant → 404 (tenant isolation)
 """
 
 import os
@@ -344,3 +347,112 @@ async def test_multitenant_isolation(
     assert resp.status_code == 200
     ids = [u["id"] for u in resp.json()]
     assert str(user_b_id) not in ids
+
+
+# ── 10. Activate usuario endpoint ─────────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_activate_inactive_user(
+    test_client: AsyncClient,
+    test_session_factory: async_sessionmaker[AsyncSession],
+    up_admin: UserInfo,
+    up_tenant: TenantInfo,
+):
+    """RED 10.1: PUT /v1/users/{id}/activate returns 204 on inactive user."""
+    from app.core.security import email_hash as _eh, hash_password
+
+    raw_email = f"inactive-{uuid.uuid4().hex[:8]}@test.com"
+    async with test_session_factory() as session:
+        user = Usuario(
+            id=uuid.uuid4(),
+            tenant_id=up_tenant.id,
+            email_cifrado="placeholder-inactive",
+            email_hash=_eh(raw_email),
+            password_hash=hash_password("testpass"),
+            activo=False,
+        )
+        session.add(user)
+        await session.commit()
+        user_id = user.id
+
+    resp = await test_client.put(
+        f"/v1/users/{user_id}/activate",
+        headers={"Authorization": f"Bearer {up_admin.token}"},
+    )
+    assert resp.status_code == 204
+
+    # Verify DB state
+    async with test_session_factory() as session:
+        result = await session.get(Usuario, user_id)
+        assert result is not None
+        assert result.activo is True
+
+
+@pytest.mark.anyio
+async def test_activate_already_active_user_is_idempotent(
+    test_client: AsyncClient,
+    test_session_factory: async_sessionmaker[AsyncSession],
+    up_admin: UserInfo,
+    up_tenant: TenantInfo,
+):
+    """TRIANGULATE 10.2: activate already-active user → 204 (idempotent)."""
+    from app.core.security import email_hash as _eh, hash_password
+
+    raw_email = f"active-{uuid.uuid4().hex[:8]}@test.com"
+    async with test_session_factory() as session:
+        user = Usuario(
+            id=uuid.uuid4(),
+            tenant_id=up_tenant.id,
+            email_cifrado="placeholder-active",
+            email_hash=_eh(raw_email),
+            password_hash=hash_password("testpass"),
+            activo=True,
+        )
+        session.add(user)
+        await session.commit()
+        user_id = user.id
+
+    resp = await test_client.put(
+        f"/v1/users/{user_id}/activate",
+        headers={"Authorization": f"Bearer {up_admin.token}"},
+    )
+    assert resp.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_activate_user_other_tenant_returns_404(
+    test_client: AsyncClient,
+    test_session_factory: async_sessionmaker[AsyncSession],
+    up_admin: UserInfo,
+):
+    """TRIANGULATE 10.3: activate user from another tenant → 404 (tenant isolation)."""
+    from app.core.security import email_hash as _eh, hash_password
+
+    # Create a different tenant and user
+    async with test_session_factory() as session:
+        tenant_other = Tenant(
+            id=uuid.uuid4(),
+            slug=f"other-{uuid.uuid4().hex[:8]}",
+            nombre="Other Tenant",
+        )
+        session.add(tenant_other)
+        await session.flush()
+
+        raw_email = f"other-{uuid.uuid4().hex[:8]}@test.com"
+        user_other = Usuario(
+            id=uuid.uuid4(),
+            tenant_id=tenant_other.id,
+            email_cifrado="placeholder-other",
+            email_hash=_eh(raw_email),
+            password_hash=hash_password("testpass"),
+            activo=False,
+        )
+        session.add(user_other)
+        await session.commit()
+        other_user_id = user_other.id
+
+    resp = await test_client.put(
+        f"/v1/users/{other_user_id}/activate",
+        headers={"Authorization": f"Bearer {up_admin.token}"},
+    )
+    assert resp.status_code == 404

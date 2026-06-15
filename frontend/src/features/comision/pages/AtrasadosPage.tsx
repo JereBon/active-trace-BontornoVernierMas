@@ -6,6 +6,8 @@ import { TablaAtrasados } from '../components/TablaAtrasados'
 import { TablaRanking } from '../components/TablaRanking'
 import { TablaNotasFinales } from '../components/TablaNotasFinales'
 import { ReporteMateriaCards } from '../components/ReporteMateriaCards'
+import { PageHelp } from '@/shared/components/PageHelp'
+import { helpContent } from '@/shared/utils/helpContent'
 
 type TabId = 'atrasados' | 'ranking' | 'notas' | 'reporte'
 
@@ -24,7 +26,10 @@ export function AtrasadosPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-gray-900">Análisis académico</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">Análisis académico</h2>
+        <PageHelp>{helpContent.atrasados}</PageHelp>
+      </div>
 
       {/* Tab bar */}
       <div className="flex border-b border-gray-200">

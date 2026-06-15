@@ -19,6 +19,9 @@ import { MonitorGlobalPage } from '@/features/coordinacion/pages/MonitorGlobalPa
 import { EncuentrosPage } from '@/features/coordinacion/pages/EncuentrosPage'
 import { ColoquiosPage } from '@/features/coordinacion/pages/ColoquiosPage'
 import { CuatrimestrePage } from '@/features/coordinacion/pages/CuatrimestrePage'
+import { FechasAcademicasPage } from '@/features/coordinacion/pages/FechasAcademicasPage'
+import { ProgramasPage } from '@/features/coordinacion/pages/ProgramasPage'
+import { PadronCoordinacionPage } from '@/features/coordinacion/pages/PadronCoordinacionPage'
 // C-24: Finanzas + Admin
 import { FinanzasLayout } from '@/features/finanzas/pages/FinanzasLayout'
 import { PeriodoPage } from '@/features/finanzas/pages/PeriodoPage'
@@ -78,6 +81,9 @@ export default function App() {
                 <Route path="encuentros" element={<EncuentrosPage />} />
                 <Route path="coloquios" element={<ColoquiosPage />} />
                 <Route path="cuatrimestre" element={<CuatrimestrePage />} />
+                <Route path="fechas" element={<FechasAcademicasPage />} />
+                <Route path="programas" element={<ProgramasPage />} />
+                <Route path="padron" element={<PadronCoordinacionPage />} />
               </Route>
 
               {/* Finanzas feature — /finanzas/* (FINANZAS role) */}

@@ -139,7 +139,7 @@ class LiquidacionRepository(BaseRepository[Liquidacion]):
         Vigencia predicate: desde <= fin_mes AND (hasta IS NULL OR hasta >= ini_mes).
 
         Returns a list of dicts with keys:
-          usuario_id, rol, comisiones, categoria_clave (nullable), facturador (bool)
+          usuario_id, rol, comisiones, categoria_clave (nullable), facturador (bool), cbu_is_null (bool)
         """
         stmt = (
             select(
@@ -148,6 +148,7 @@ class LiquidacionRepository(BaseRepository[Liquidacion]):
                 Asignacion.comisiones,
                 Materia.categoria_clave,
                 Usuario.facturador,
+                Usuario.cbu_cifrado,
             )
             .outerjoin(Materia, Asignacion.materia_id == Materia.id)
             .join(Usuario, Asignacion.usuario_id == Usuario.id)
@@ -170,6 +171,7 @@ class LiquidacionRepository(BaseRepository[Liquidacion]):
                 "comisiones": r.comisiones or [],
                 "categoria_clave": r.categoria_clave,
                 "facturador": bool(r.facturador),
+                "cbu_is_null": r.cbu_cifrado is None,
             }
             for r in rows
         ]

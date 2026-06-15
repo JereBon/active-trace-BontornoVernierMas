@@ -574,3 +574,89 @@ async def test_list_acks_without_permission(
         headers={"Authorization": f"Bearer {alumno_user.token}"},
     )
     assert acks_resp.status_code == 403
+
+
+# ── 7. Archivar aviso endpoint ─────────────────────────────────────────────────
+
+def _aviso_payload_arc() -> dict:
+    from datetime import date, timedelta
+    today = date.today()
+    return {
+        "titulo": f"Aviso arc {uuid.uuid4().hex[:6]}",
+        "cuerpo": "Cuerpo de prueba para archivar",
+        "vig_desde": today.isoformat(),
+        "vig_hasta": (today + timedelta(days=7)).isoformat(),
+    }
+
+
+@pytest.mark.anyio
+async def test_archivar_aviso_activo(
+    test_client: AsyncClient,
+    admin_user: UserInfo,
+):
+    """RED 7.1: POST /avisos/{id}/archivar on active aviso → 200, activo=False."""
+    create_resp = await test_client.post(
+        "/v1/avisos",
+        json=_aviso_payload_arc(),
+        headers={"Authorization": f"Bearer {admin_user.token}"},
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    aviso_id = create_resp.json()["id"]
+    assert create_resp.json()["activo"] is True
+
+    arc_resp = await test_client.post(
+        f"/v1/avisos/{aviso_id}/archivar",
+        headers={"Authorization": f"Bearer {admin_user.token}"},
+    )
+    assert arc_resp.status_code == 200, arc_resp.text
+    assert arc_resp.json()["activo"] is False
+
+
+@pytest.mark.anyio
+async def test_archivar_aviso_idempotente(
+    test_client: AsyncClient,
+    admin_user: UserInfo,
+):
+    """TRIANGULATE 7.2: archivar twice → still 200, activo=False (idempotent)."""
+    create_resp = await test_client.post(
+        "/v1/avisos",
+        json=_aviso_payload_arc(),
+        headers={"Authorization": f"Bearer {admin_user.token}"},
+    )
+    assert create_resp.status_code == 201
+    aviso_id = create_resp.json()["id"]
+
+    # First archive
+    await test_client.post(
+        f"/v1/avisos/{aviso_id}/archivar",
+        headers={"Authorization": f"Bearer {admin_user.token}"},
+    )
+    # Second archive — must remain 200 and activo=False
+    resp2 = await test_client.post(
+        f"/v1/avisos/{aviso_id}/archivar",
+        headers={"Authorization": f"Bearer {admin_user.token}"},
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["activo"] is False
+
+
+@pytest.mark.anyio
+async def test_archivar_aviso_sin_permiso(
+    test_client: AsyncClient,
+    admin_user: UserInfo,
+    alumno_user: UserInfo,
+):
+    """TRIANGULATE 7.3: archivar without avisos:publicar → 403."""
+    create_resp = await test_client.post(
+        "/v1/avisos",
+        json=_aviso_payload_arc(),
+        headers={"Authorization": f"Bearer {admin_user.token}"},
+    )
+    assert create_resp.status_code == 201
+    aviso_id = create_resp.json()["id"]
+
+    resp = await test_client.post(
+        f"/v1/avisos/{aviso_id}/archivar",
+        headers={"Authorization": f"Bearer {alumno_user.token}"},
+    )
+    assert resp.status_code == 403

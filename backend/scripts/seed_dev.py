@@ -51,6 +51,8 @@ PERMISOS_DEF = [
     ("encuentros:gestionar",        "Gestionar encuentros"),
     ("guardias:registrar",          "Registrar guardias"),
     ("tareas:gestionar",            "Gestionar tareas internas"),
+    ("evaluaciones:gestionar",      "Gestionar coloquios y evaluaciones"),
+    ("evaluaciones:resultado",      "Registrar resultados de evaluaciones"),
     ("equipos:asignar",             "Gestionar asignaciones"),
     ("estructura:gestionar",        "Gestionar estructura académica"),
     ("usuarios:gestionar",          "Gestionar usuarios"),
@@ -130,6 +132,7 @@ async def seed(eng):
                 "comunicacion:enviar","comunicacion:aprobar",
                 "equipos:asignar","encuentros:gestionar","guardias:registrar",
                 "avisos:publicar","avisos:confirmar","auditoria:ver",
+                "evaluaciones:gestionar","evaluaciones:resultado","tareas:gestionar",
             ],
             "PROFESOR": [
                 "estructura:gestionar","padron:leer","padron:cargar",

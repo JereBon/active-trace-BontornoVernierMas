@@ -1,10 +1,14 @@
 // features/coordinacion/components/monitor/MonitorGlobalPanel.tsx
 import { useState } from 'react'
 import { useMonitorGlobal } from '../../hooks/useMonitorGlobal'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 
 export function MonitorGlobalPanel() {
+  const { user } = useAuth()
   const [comision, setComision] = useState('')
   const [regional, setRegional] = useState('')
+
+  const esProfesor = user?.roles.includes('PROFESOR') && !user?.roles.includes('COORDINADOR') && !user?.roles.includes('ADMIN')
 
   const params = {
     ...(comision ? { comision } : {}),
@@ -19,6 +23,11 @@ export function MonitorGlobalPanel() {
 
   return (
     <div>
+      {esProfesor && (
+        <p className="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded mb-3">
+          Vista acotada: solo mostrás alumnos de tus materias asignadas.
+        </p>
+      )}
       <div className="mb-4 flex gap-4">
         <input
           value={comision}

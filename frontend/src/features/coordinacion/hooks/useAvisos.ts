@@ -1,12 +1,12 @@
 // features/coordinacion/hooks/useAvisos.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { archivarAviso, createAviso, getAvisos, updateAviso } from '../services/avisosService'
+import { archivarAviso, createAviso, getAvisosGestion, updateAviso } from '../services/avisosService'
 import type { AvisoCreate } from '../types'
 
-const QUERY_KEY = ['avisos']
+const QUERY_KEY = ['avisos-gestion']
 
 export function useAvisos() {
-  return useQuery({ queryKey: QUERY_KEY, queryFn: getAvisos })
+  return useQuery({ queryKey: QUERY_KEY, queryFn: getAvisosGestion })
 }
 
 export function useCreateAviso() {

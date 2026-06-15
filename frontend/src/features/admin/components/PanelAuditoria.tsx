@@ -37,12 +37,18 @@ export function PanelAuditoria() {
       ) : panel ? (
         <section aria-label="panel-metricas">
           <h2 className="mb-3 text-base font-semibold text-gray-900">Métricas generales</h2>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            <MetricaCard label="Total acciones" value={panel.total_acciones} />
-            <MetricaCard label="Acciones hoy" value={panel.acciones_hoy} />
-          </div>
+          {(panel.total_acciones != null || panel.acciones_hoy != null) && (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              {panel.total_acciones != null && (
+                <MetricaCard label="Total acciones" value={panel.total_acciones} />
+              )}
+              {panel.acciones_hoy != null && (
+                <MetricaCard label="Acciones hoy" value={panel.acciones_hoy} />
+              )}
+            </div>
+          )}
 
-          {panel.top_acciones.length > 0 && (
+          {panel.top_acciones && panel.top_acciones.length > 0 && (
             <div className="mt-4">
               <h3 className="mb-2 text-sm font-medium text-gray-700">Top acciones</h3>
               <ul className="space-y-1">
@@ -50,6 +56,20 @@ export function PanelAuditoria() {
                   <li key={a.accion} className="flex justify-between text-sm text-gray-700">
                     <span className="font-mono text-xs">{a.accion}</span>
                     <span>{a.cantidad}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {panel.por_materia && panel.por_materia.length > 0 && (
+            <div className="mt-4">
+              <h3 className="mb-2 text-sm font-medium text-gray-700">Por materia</h3>
+              <ul className="space-y-1">
+                {panel.por_materia.map((m, i) => (
+                  <li key={i} className="flex justify-between text-sm text-gray-700">
+                    <span>{m.nombre ?? '—'}</span>
+                    <span>{m.cantidad}</span>
                   </li>
                 ))}
               </ul>

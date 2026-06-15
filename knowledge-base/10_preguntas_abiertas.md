@@ -6,35 +6,24 @@
 
 ## Prioridad ALTA — bloqueantes para el modelo de dominio
 
-### PA-01 — ¿Cómo se organiza el catálogo de materias y cuál es la fuente de verdad?
+### ~~PA-01~~ — CERRADA
 
-El sistema parece operar con (al menos) dos agrupaciones distintas de materias:
-
-- Una lista con códigos cortos del tipo `PROG_I`, `AYSO`, etc., ligada a la estructura de carreras y cohortes.
-- Otra lista con nombres descriptivos del tipo "Programación – Python", "Programación – Java", orientada al seguimiento de actividades de aprendizaje.
-
-**Preguntas abiertas**:
-
-- ¿Son dos catálogos independientes (uno por carrera/plan y otro por instancia de dictado) o es una sola entidad con distintas vistas?
-- ¿Existe una relación formal entre ambas agrupaciones? Si un alumno tiene una calificación en "Programación – Python", ¿a qué materia del plan corresponde?
-- ¿Cuál de las dos representa la materia a efectos del plan de estudios y cuál representa la instancia de cursado?
-- ¿Las calificaciones viajan entre una y otra, o cada una tiene su propio registro?
-
-**Impacto**: define si el modelo de datos necesita una entidad `Materia` (del plan) y una entidad separada `InstanciaDictado` (o `Comisión` extendida), o si alcanza con una sola.
+**Resolución** (2026-06-14):
+- Se usa **una sola entidad `Materia`** (del plan de estudios: `codigo`, `nombre`, `categoria_clave`). No existe `InstanciaDictado` como entidad separada.
+- La relación materia × cohorte × docente la concentra **`Asignacion`** (`materia_id`, `cohorte_id`, `usuario_id`, `rol`, `comisiones[]`). Cada asignación indica qué comisiones del cuatrimestre cubre ese docente para esa materia.
+- Las calificaciones (`Calificacion`) referencian directamente la materia (`materia_id`) más el alumno y la actividad. El campo `comisiones` en `Asignacion` es texto libre (ej. `["C1", "C2"]`) — no hay entidad `Comision` con FK.
+- El "dictado" a efectos del LMS (Moodle) es un detalle de integración, no del modelo de dominio.
+- Documentado en: `04_modelo_de_datos.md` §E3 (Materia), §E7 (Asignacion), §E5 (Calificacion).
 
 ---
 
-### PA-07 — ¿Las cohortes pertenecen a una carrera o son transversales?
+### ~~PA-07~~ — CERRADA
 
-Las cohortes (ej.: "MAR-2026") pueden pertenecer a una carrera específica o ser compartidas entre varias.
-
-**Preguntas abiertas**:
-
-- ¿Una cohorte es exclusiva de un programa académico?
-- ¿Puede un alumno estar en la misma cohorte con materias de distintas carreras?
-- ¿La cohorte define el ciclo lectivo o también el plan de estudios vigente?
-
-**Impacto**: afecta la cardinalidad entre `Cohorte`, `Carrera` y `Alumno` en el modelo de datos ([04_modelo_de_datos.md](04_modelo_de_datos.md)).
+**Resolución** (2026-06-14):
+- **Una cohorte pertenece a exactamente una carrera** (`Cohorte.carrera_id FK` → `Carrera`). La cardinalidad es N:1. No existen cohortes transversales entre carreras.
+- Un alumno puede tener asignaciones en múltiples cohortes (de distintas carreras), pero cada cohorte es exclusiva de su carrera.
+- `Cohorte` define el ciclo lectivo (`vig_desde`, `vig_hasta`, `anio`) dentro de una carrera. El plan de estudios vigente se infiere de la carrera.
+- Documentado en: `04_modelo_de_datos.md` §E2 (Cohorte → carrera_id FK RESTRICT).
 
 ---
 
@@ -88,15 +77,14 @@ El módulo de guardias muestra el listado de guardias registradas por docente, p
 
 ---
 
-### PA-08 — ¿Cuál es el ciclo de vida de una Tarea?
+### ~~PA-08~~ — CERRADA
 
-El módulo de tareas tiene un filtro de estado, pero los valores posibles del ciclo de vida no están definidos.
-
-**Preguntas abiertas**:
-
-- ¿Cuáles son los estados posibles de una tarea? (ej.: `abierta → en progreso → completada → archivada`)
-- ¿Las transiciones son libres o tienen reglas (ej.: solo el creador puede cerrarla)?
-- ¿Hay notificaciones automáticas al cambiar de estado?
+**Resolución** (2026-06-14):
+- Estados implementados: **`Pendiente → En_progreso → Resuelta | Cancelada`** (cuatro estados finales). Almacenados como `String` en lugar de PG ENUM para flexibilidad DDL.
+- Transiciones validadas en `TareaService`: no todos los estados son alcanzables desde cualquier origen (estado máquina básico).
+- Cambio de estado vía `PATCH /v1/tareas/{id}/estado` con `guard tareas:gestionar`. Delegación vía `POST /v1/tareas/{id}/delegar`.
+- No hay notificaciones automáticas de estado en esta versión (fuera de scope MVP).
+- Documentado en: `04_modelo_de_datos.md` §E12 (Tarea), `backend/app/models/tarea.py`.
 
 ---
 
@@ -147,15 +135,13 @@ El módulo de tareas permite filtrar por un contexto de agrupación cuya semánt
 
 ---
 
-### PA-14 — ¿Cómo reserva un alumno una instancia de coloquio?
+### ~~PA-14~~ — CERRADA
 
-El sistema muestra reservas activas y cupos disponibles para instancias de evaluación, pero el flujo de reserva del alumno no está especificado.
-
-**Preguntas abiertas**:
-
-- ¿El alumno reserva desde dentro del sistema o desde un canal externo (ej.: Moodle, link público)?
-- ¿Hay restricciones para reservar (ej.: cantidad máxima de intentos, estado de regularidad requerido)?
-- ¿El alumno puede cancelar su reserva?
+**Resolución** (2026-06-14):
+- El alumno reserva **desde dentro del sistema** (SPA): `POST /v1/coloquios/{id}/reservas` con permiso `evaluaciones:reservar` (rol ALUMNO).
+- El endpoint verifica cupo disponible; si no hay cupo, devuelve 409. Sin restricción de intentos en MVP.
+- Cancelación: `DELETE /v1/coloquios/{coloquio_id}/reservas/{reserva_id}` (solo el propio alumno puede cancelar la suya).
+- Documentado en: `04_modelo_de_datos.md` §E14 (ReservaEvaluacion), `backend/app/api/v1/routers/coloquios.py`.
 
 ---
 
@@ -171,15 +157,13 @@ El sistema contempla la posibilidad de integrar un módulo de corrección autom�
 
 ---
 
-### PA-24 — ¿Las facturas se asocian a comisiones o son globales por docente?
+### ~~PA-24~~ — CERRADA
 
-En el módulo de facturas existe un campo de detalle con texto libre, pero no está claro si hay una asociación formal con el trabajo realizado.
-
-**Preguntas abiertas**:
-
-- ¿Una factura debe vincularse a una comisión específica, a un período, o puede ser un concepto genérico?
-- ¿Cómo se concilia la factura con el cálculo de liquidación?
-- ¿El sistema valida que el monto de la factura no supere el total liquidado?
+**Resolución** (2026-06-14):
+- Las facturas son **globales por docente × período**: `Factura(usuario_id, periodo, monto, concepto, estado)`. No hay `comision_id` en el modelo.
+- El campo `concepto` es texto libre (descripción del trabajo); `periodo` es `AAAA-MM`, igual que en `Liquidacion`.
+- Conciliación: los docentes con `facturador=True` se marcan `excluido_por_factura=True` en la liquidación y quedan fuera del cálculo general. El monto declarado en la factura no es validado automáticamente contra el total liquidado (responsabilidad de FINANZAS).
+- Documentado en: `04_modelo_de_datos.md` §E20 (Factura), `backend/app/models/factura.py`.
 
 ---
 

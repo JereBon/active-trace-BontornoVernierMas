@@ -18,7 +18,7 @@ from app.core.dependencies import CurrentUser, DBSession
 from app.core.permisos import AVISOS_CONFIRMAR, AVISOS_PUBLICAR
 from app.core.rbac import require_permission
 from app.repositories.aviso_repository import AvisoRepository
-from app.schemas.aviso import AvisoAckOut, AvisoCreate, AvisoOut, AvisoPatch
+from app.schemas.aviso import AvisoAckOut, AvisoCreate, AvisoOut, AvisoPatch, AvisoUpdate
 
 router = APIRouter(
     prefix="/v1/avisos",
@@ -66,6 +66,21 @@ async def list_avisos(
     return [AvisoOut.model_validate(a) for a in avisos]
 
 
+@router.get(
+    "/gestion",
+    response_model=list[AvisoOut],
+    dependencies=[Depends(require_permission(AVISOS_PUBLICAR))],
+)
+async def list_avisos_gestion(
+    session: DBSession,
+    current_user: CurrentUser,
+) -> list[AvisoOut]:
+    """Return ALL Avisos for this tenant (no scope/vigencia filter). Management use only."""
+    repo = AvisoRepository(session, current_user.tenant_id)
+    avisos = await repo.list_todos()
+    return [AvisoOut.model_validate(a) for a in avisos]
+
+
 @router.post(
     "/{aviso_id}/ack",
     response_model=AvisoAckOut,
@@ -105,6 +120,48 @@ async def list_acks(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aviso not found")
     acks = await repo.list_acks(aviso_id)
     return [AvisoAckOut.model_validate(a) for a in acks]
+
+
+@router.post(
+    "/{aviso_id}/archivar",
+    response_model=AvisoOut,
+    dependencies=[Depends(require_permission(AVISOS_PUBLICAR))],
+)
+async def archivar_aviso(
+    aviso_id: uuid.UUID,
+    session: DBSession,
+    current_user: CurrentUser,
+) -> AvisoOut:
+    """Archive an Aviso (sets activo=False). Idempotent."""
+    repo = AvisoRepository(session, current_user.tenant_id)
+    aviso = await repo.patch_aviso(aviso_id, {"activo": False})
+    if aviso is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aviso not found")
+    await session.commit()
+    await session.refresh(aviso)
+    return AvisoOut.model_validate(aviso)
+
+
+@router.put(
+    "/{aviso_id}",
+    response_model=AvisoOut,
+    dependencies=[Depends(require_permission(AVISOS_PUBLICAR))],
+)
+async def update_aviso(
+    aviso_id: uuid.UUID,
+    body: AvisoUpdate,
+    session: DBSession,
+    current_user: CurrentUser,
+) -> AvisoOut:
+    """Update content fields of an Aviso (titulo, cuerpo, scope, vigencia). Requires avisos:publicar."""
+    repo = AvisoRepository(session, current_user.tenant_id)
+    data = body.model_dump(exclude_unset=True)
+    aviso = await repo.patch_aviso(aviso_id, data)
+    if aviso is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aviso not found")
+    await session.commit()
+    await session.refresh(aviso)
+    return AvisoOut.model_validate(aviso)
 
 
 @router.patch(

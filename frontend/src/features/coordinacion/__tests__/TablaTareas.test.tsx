@@ -1,5 +1,5 @@
 // __tests__/TablaTareas.test.tsx
-// TDD tests for TablaTareas — render list, filter by estado, badge de prioridad.
+// TDD tests for TablaTareas — render list, filter by estado.
 
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -25,11 +25,11 @@ function makeTarea(overrides: Partial<Tarea> = {}): Tarea {
     id: crypto.randomUUID(),
     titulo: 'Tarea ejemplo',
     descripcion: null,
-    estado: 'pendiente',
-    prioridad: 'media',
-    asignado_a: null,
-    asignado_nombre: null,
-    creado_por: 'user-1',
+    estado: 'Pendiente',
+    asignado_a: crypto.randomUUID(),
+    asignado_por: crypto.randomUUID(),
+    materia_id: null,
+    contexto_id: null,
     tenant_id: 'tenant-1',
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
@@ -54,36 +54,34 @@ describe('TablaTareas', () => {
 
   it('filters tareas by estado when filter is applied', async () => {
     mockGetTareas.mockResolvedValueOnce([
-      makeTarea({ titulo: 'Tarea Pendiente', estado: 'pendiente' }),
-      makeTarea({ titulo: 'Tarea Completada', estado: 'completada' }),
+      makeTarea({ titulo: 'Tarea Pendiente', estado: 'Pendiente' }),
+      makeTarea({ titulo: 'Tarea Resuelta', estado: 'Resuelta' }),
     ])
 
     render(<TablaTareas onSelect={vi.fn()} />, { wrapper })
 
     await screen.findByText('Tarea Pendiente')
 
-    // Select filter "completada"
     const estadoSelect = screen.getByLabelText(/estado/i)
-    fireEvent.change(estadoSelect, { target: { value: 'completada' } })
+    fireEvent.change(estadoSelect, { target: { value: 'Resuelta' } })
 
     expect(screen.queryByText('Tarea Pendiente')).toBeNull()
-    expect(screen.getByText('Tarea Completada')).toBeTruthy()
+    expect(screen.getByText('Tarea Resuelta')).toBeTruthy()
   })
 
-  it('shows priority badge for each tarea', async () => {
+  it('shows estado badge for each tarea', async () => {
     mockGetTareas.mockResolvedValueOnce([
-      makeTarea({ titulo: 'Tarea Urgente', prioridad: 'alta' }),
+      makeTarea({ titulo: 'Tarea En Progreso', estado: 'En_progreso' }),
     ])
 
     render(<TablaTareas onSelect={vi.fn()} />, { wrapper })
 
-    await screen.findByText('Tarea Urgente')
-    // The badge renders the prioridad text in a styled span
+    await screen.findByText('Tarea En Progreso')
     const badges = document.querySelectorAll('span')
-    const altaBadge = Array.from(badges).find(
-      (el) => el.textContent?.trim() === 'alta',
+    const badge = Array.from(badges).find(
+      (el) => el.textContent?.trim() === 'En progreso',
     )
-    expect(altaBadge).toBeTruthy()
+    expect(badge).toBeTruthy()
   })
 
   it('shows empty state when no tareas', async () => {

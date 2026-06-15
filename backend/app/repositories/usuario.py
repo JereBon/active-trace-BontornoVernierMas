@@ -166,6 +166,20 @@ class UsuarioRepository(BaseRepository[Usuario]):
         data.update(_encrypt_pii_fields(data))
         return await self.update(usuario_id, data)
 
+    async def activate(self, usuario_id: uuid.UUID) -> bool:
+        """Activate (re-enable) a Usuario by setting activo=True. Idempotent.
+
+        Returns True if found, False if not found.
+        """
+        instance = await self.get(usuario_id)
+        if instance is None:
+            return False
+        instance.activo = True
+        instance.updated_at = datetime.now(tz=timezone.utc)
+        self._session.add(instance)
+        await self._session.flush()
+        return True
+
     async def deactivate(self, usuario_id: uuid.UUID) -> bool:
         """Deactivate (soft-disable) a Usuario by setting activo=False.
 

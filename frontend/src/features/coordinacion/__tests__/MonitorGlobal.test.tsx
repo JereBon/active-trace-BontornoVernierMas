@@ -12,6 +12,10 @@ vi.mock('../services/monitorService', () => ({
   getMonitorGlobal: vi.fn(),
 }))
 
+vi.mock('@/features/auth/hooks/useAuth', () => ({
+  useAuth: () => ({ user: null, isAuthenticated: false, isLoading: false, challenge: null, login: vi.fn(), logout: vi.fn() }),
+}))
+
 import { getMonitorGlobal } from '../services/monitorService'
 const mockGetMonitorGlobal = getMonitorGlobal as ReturnType<typeof vi.fn>
 

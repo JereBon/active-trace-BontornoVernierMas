@@ -834,3 +834,233 @@ async def test_get_facturas_403_sin_permiso(async_client: AsyncClient, liq_http_
         headers={"Authorization": f"Bearer {liq_http_ctx['noperm_token']}"},
     )
     assert resp.status_code == 403
+
+
+# ── RN-26: CBU requerido para docentes de planta ──────────────────────────────
+
+@pytest.mark.asyncio
+async def test_calcular_sin_cbu_planta_raises_422(test_session_factory, db_tables):
+    """RED RN-26: calcular con docente planta sin CBU → HTTPException 422."""
+    from decimal import Decimal
+    from app.core.security import hash_password, email_hash
+    from app.services.liquidacion_service import LiquidacionService
+    from fastapi import HTTPException
+
+    async with test_session_factory() as session:
+        t_id = uuid.uuid4()
+        tenant = Tenant(id=t_id, slug=f"cbu-test-{uuid.uuid4().hex[:6]}", nombre="CBUTenant")
+        session.add(tenant)
+        await session.flush()
+
+        carrera = Carrera(
+            id=uuid.uuid4(), tenant_id=t_id,
+            codigo="CBU", nombre="Carrera CBU", estado="Activa"
+        )
+        session.add(carrera)
+        await session.flush()
+
+        cohorte = Cohorte(
+            id=uuid.uuid4(), tenant_id=t_id, carrera_id=carrera.id,
+            nombre="2025", anio=2025, estado="Activa",
+            vig_desde=date(2025, 1, 1), vig_hasta=None,
+        )
+        session.add(cohorte)
+        await session.flush()
+
+        materia = Materia(
+            id=uuid.uuid4(), tenant_id=t_id,
+            codigo="M1", nombre="Mat1", estado="Activa",
+            categoria_clave=None,
+        )
+        session.add(materia)
+        await session.flush()
+
+        raw_email = f"nocbu-{uuid.uuid4().hex[:6]}@test.com"
+        docente_sin_cbu = Usuario(
+            id=uuid.uuid4(), tenant_id=t_id,
+            email_cifrado=f"enc-{raw_email}",
+            email_hash=email_hash(raw_email),
+            password_hash=hash_password("pass"),
+            activo=True,
+            cbu_cifrado=None,
+            facturador=False,
+        )
+        session.add(docente_sin_cbu)
+        await session.flush()
+
+        asig = Asignacion(
+            id=uuid.uuid4(), tenant_id=t_id,
+            usuario_id=docente_sin_cbu.id, rol="PROFESOR",
+            cohorte_id=cohorte.id, materia_id=materia.id,
+            comisiones=["C1"],
+            desde=date(2025, 1, 1), hasta=None,
+        )
+        session.add(asig)
+        await session.flush()
+
+        sb = SalarioBase(
+            id=uuid.uuid4(), tenant_id=t_id,
+            rol="PROFESOR", monto=Decimal("1000.00"),
+            desde=date(2025, 1, 1), hasta=None,
+        )
+        session.add(sb)
+        await session.commit()
+
+        cohorte_id = cohorte.id
+
+    async with test_session_factory() as session:
+        svc = LiquidacionService(session, t_id)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.calcular(cohorte_id, "2025-06")
+        assert exc_info.value.status_code == 422
+        assert "CBU" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_calcular_sin_cbu_facturante_ok(test_session_factory, db_tables):
+    """TRIANGULATE RN-26: facturador=True without CBU → calcular succeeds."""
+    from decimal import Decimal
+    from app.core.security import hash_password, email_hash
+    from app.services.liquidacion_service import LiquidacionService
+
+    async with test_session_factory() as session:
+        t_id = uuid.uuid4()
+        tenant = Tenant(id=t_id, slug=f"fact-nocbu-{uuid.uuid4().hex[:6]}", nombre="FactNoCBU")
+        session.add(tenant)
+        await session.flush()
+
+        carrera = Carrera(
+            id=uuid.uuid4(), tenant_id=t_id,
+            codigo="FC", nombre="Carrera Fact", estado="Activa"
+        )
+        session.add(carrera)
+        await session.flush()
+
+        cohorte = Cohorte(
+            id=uuid.uuid4(), tenant_id=t_id, carrera_id=carrera.id,
+            nombre="2025", anio=2025, estado="Activa",
+            vig_desde=date(2025, 1, 1), vig_hasta=None,
+        )
+        session.add(cohorte)
+        await session.flush()
+
+        materia = Materia(
+            id=uuid.uuid4(), tenant_id=t_id,
+            codigo="MF", nombre="MatFact", estado="Activa",
+            categoria_clave=None,
+        )
+        session.add(materia)
+        await session.flush()
+
+        raw_email = f"fact-{uuid.uuid4().hex[:6]}@test.com"
+        docente_fact = Usuario(
+            id=uuid.uuid4(), tenant_id=t_id,
+            email_cifrado=f"enc-{raw_email}",
+            email_hash=email_hash(raw_email),
+            password_hash=hash_password("pass"),
+            activo=True,
+            cbu_cifrado=None,
+            facturador=True,
+        )
+        session.add(docente_fact)
+        await session.flush()
+
+        asig = Asignacion(
+            id=uuid.uuid4(), tenant_id=t_id,
+            usuario_id=docente_fact.id, rol="PROFESOR",
+            cohorte_id=cohorte.id, materia_id=materia.id,
+            comisiones=["C1"],
+            desde=date(2025, 1, 1), hasta=None,
+        )
+        session.add(asig)
+        await session.flush()
+
+        sb = SalarioBase(
+            id=uuid.uuid4(), tenant_id=t_id,
+            rol="PROFESOR", monto=Decimal("1000.00"),
+            desde=date(2025, 1, 1), hasta=None,
+        )
+        session.add(sb)
+        await session.commit()
+
+        cohorte_id = cohorte.id
+
+    async with test_session_factory() as session:
+        svc = LiquidacionService(session, t_id)
+        records = await svc.calcular(cohorte_id, "2025-06")
+    assert len(records) >= 1
+
+
+@pytest.mark.asyncio
+async def test_calcular_con_cbu_planta_ok(test_session_factory, db_tables):
+    """TRIANGULATE RN-26: planta docente WITH cbu_cifrado → calcular succeeds."""
+    from decimal import Decimal
+    from app.core.security import hash_password, email_hash
+    from app.services.liquidacion_service import LiquidacionService
+
+    async with test_session_factory() as session:
+        t_id = uuid.uuid4()
+        tenant = Tenant(id=t_id, slug=f"con-cbu-{uuid.uuid4().hex[:6]}", nombre="ConCBU")
+        session.add(tenant)
+        await session.flush()
+
+        carrera = Carrera(
+            id=uuid.uuid4(), tenant_id=t_id,
+            codigo="CC", nombre="Carrera CBU OK", estado="Activa"
+        )
+        session.add(carrera)
+        await session.flush()
+
+        cohorte = Cohorte(
+            id=uuid.uuid4(), tenant_id=t_id, carrera_id=carrera.id,
+            nombre="2025", anio=2025, estado="Activa",
+            vig_desde=date(2025, 1, 1), vig_hasta=None,
+        )
+        session.add(cohorte)
+        await session.flush()
+
+        materia = Materia(
+            id=uuid.uuid4(), tenant_id=t_id,
+            codigo="MC", nombre="MatConCBU", estado="Activa",
+            categoria_clave=None,
+        )
+        session.add(materia)
+        await session.flush()
+
+        raw_email = f"concbu-{uuid.uuid4().hex[:6]}@test.com"
+        docente_con_cbu = Usuario(
+            id=uuid.uuid4(), tenant_id=t_id,
+            email_cifrado=f"enc-{raw_email}",
+            email_hash=email_hash(raw_email),
+            password_hash=hash_password("pass"),
+            activo=True,
+            cbu_cifrado="aes-encrypted-cbu-value",
+            facturador=False,
+        )
+        session.add(docente_con_cbu)
+        await session.flush()
+
+        asig = Asignacion(
+            id=uuid.uuid4(), tenant_id=t_id,
+            usuario_id=docente_con_cbu.id, rol="PROFESOR",
+            cohorte_id=cohorte.id, materia_id=materia.id,
+            comisiones=["C1"],
+            desde=date(2025, 1, 1), hasta=None,
+        )
+        session.add(asig)
+        await session.flush()
+
+        sb = SalarioBase(
+            id=uuid.uuid4(), tenant_id=t_id,
+            rol="PROFESOR", monto=Decimal("1000.00"),
+            desde=date(2025, 1, 1), hasta=None,
+        )
+        session.add(sb)
+        await session.commit()
+
+        cohorte_id = cohorte.id
+
+    async with test_session_factory() as session:
+        svc = LiquidacionService(session, t_id)
+        records = await svc.calcular(cohorte_id, "2025-06")
+    assert len(records) >= 1

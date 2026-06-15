@@ -24,13 +24,19 @@ function wrapper({ children }: { children: ReactNode }) {
 function makeEquipo(overrides: Partial<EquipoDocente> = {}): EquipoDocente {
   return {
     id: crypto.randomUUID(),
-    nombre: 'Equipo A',
-    descripcion: null,
-    vigencia_desde: '2024-03-01',
-    vigencia_hasta: '2024-07-31',
-    integrantes: [],
     tenant_id: 'tenant-1',
+    usuario_id: crypto.randomUUID(),
+    rol: 'PROFESOR',
+    materia_id: null,
+    carrera_id: null,
+    cohorte_id: null,
+    comisiones: [],
+    responsable_id: null,
+    desde: '2024-03-01',
+    hasta: null,
     created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    deleted_at: null,
     ...overrides,
   }
 }
@@ -39,17 +45,17 @@ describe('TablaEquipos', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('renders equipo rows when data is available', async () => {
+    const uid1 = 'aaaaaaaa-0000-0000-0000-000000000001'
+    const uid2 = 'bbbbbbbb-0000-0000-0000-000000000002'
     mockGetEquipos.mockResolvedValueOnce([
-      makeEquipo({ nombre: 'Equipo Matemáticas' }),
-      makeEquipo({ nombre: 'Equipo Física' }),
+      makeEquipo({ usuario_id: uid1, rol: 'PROFESOR' }),
+      makeEquipo({ usuario_id: uid2, rol: 'TUTOR' }),
     ])
 
     render(<TablaEquipos onEdit={vi.fn()} />, { wrapper })
 
-    const row1 = await screen.findByText('Equipo Matemáticas')
-    const row2 = await screen.findByText('Equipo Física')
-    expect(row1).toBeTruthy()
-    expect(row2).toBeTruthy()
+    expect(await screen.findByText('PROFESOR')).toBeTruthy()
+    expect(screen.getByText('TUTOR')).toBeTruthy()
   })
 
   it('shows empty state message when no equipos exist', async () => {
@@ -57,13 +63,18 @@ describe('TablaEquipos', () => {
 
     render(<TablaEquipos onEdit={vi.fn()} />, { wrapper })
 
-    const msg = await screen.findByText(/no hay equipos/i)
+    const msg = await screen.findByText(/no hay asignaciones/i)
     expect(msg).toBeTruthy()
   })
 
   it('shows pagination when there are more than 20 equipos', async () => {
+    const uid25 = 'cccccccc-0000-0000-0000-000000000099'
     const items = Array.from({ length: 25 }, (_, i) =>
-      makeEquipo({ nombre: `Equipo ${i}`, id: `id-${i}` }),
+      makeEquipo({
+        id: `id-${i}`,
+        usuario_id: i === 24 ? uid25 : `dddddddd-0000-0000-0000-${String(i).padStart(12, '0')}`,
+        rol: 'PROFESOR',
+      }),
     )
     mockGetEquipos.mockResolvedValueOnce(items)
 
@@ -72,10 +83,10 @@ describe('TablaEquipos', () => {
     const nextBtn = await screen.findByRole('button', { name: /siguiente/i })
     expect(nextBtn).not.toBeDisabled()
 
-    // Page 1 shows first 20
-    expect(screen.queryByText('Equipo 24')).toBeNull()
+    // Page 1 shows first 20 — uid25 not visible
+    expect(screen.queryByText(uid25)).toBeNull()
 
     fireEvent.click(nextBtn)
-    expect(screen.getByText('Equipo 24')).toBeTruthy()
+    expect(screen.getByText(uid25)).toBeTruthy()
   })
 })

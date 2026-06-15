@@ -7,12 +7,16 @@ import {
   getEquipos,
   updateEquipo,
 } from '../services/equiposService'
+import type { ClonarEquipoPayload } from '../services/equiposService'
 import type { EquipoDocenteCreate, EquipoDocenteUpdate } from '../types'
 
 const QUERY_KEY = ['equipos-docentes']
 
-export function useEquipos() {
-  return useQuery({ queryKey: QUERY_KEY, queryFn: getEquipos })
+export function useEquipos(responsableId?: string) {
+  return useQuery({
+    queryKey: [...QUERY_KEY, responsableId ?? null],
+    queryFn: () => getEquipos(responsableId),
+  })
 }
 
 export function useCreateEquipo() {
@@ -43,7 +47,7 @@ export function useDeleteEquipo() {
 export function useClonarEquipo() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => clonarEquipo(id),
+    mutationFn: (payload: ClonarEquipoPayload) => clonarEquipo(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   })
 }

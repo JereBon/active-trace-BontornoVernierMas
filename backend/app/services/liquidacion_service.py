@@ -23,6 +23,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException, status
+
 from app.core.audit import audit_action
 from app.core.exceptions import ConflictError
 from app.models.liquidacion import EstadoLiquidacion
@@ -80,6 +82,23 @@ class LiquidacionService:
         asignaciones = await self._liq_repo.get_asignaciones_vigentes(
             cohorte_id, ini_mes, fin_mes
         )
+
+        # RN-26: validate CBU for non-facturadores before processing
+        sin_cbu = [
+            str(a["usuario_id"])
+            for a in asignaciones
+            if a["cbu_is_null"] and not a["facturador"]
+        ]
+        if sin_cbu:
+            unique_sin_cbu = list(dict.fromkeys(sin_cbu))
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Los siguientes docentes no tienen CBU registrado y no pueden liquidarse: "
+                    f"{', '.join(unique_sin_cbu[:5])}. "
+                    "Registre el CBU antes de calcular la liquidacion."
+                ),
+            )
 
         # Group by (usuario_id, rol) — aggregate comisiones and claves
         from collections import defaultdict

@@ -1,18 +1,17 @@
 // __tests__/AvisoForm.test.tsx
-// TDD tests for AvisoForm — validation scope, severidad, submit.
+// TDD tests for AvisoForm — validation scope, vig_desde/hasta, submit.
 
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { AvisoForm } from '../components/avisos/AvisoForm'
 
 describe('AvisoForm', () => {
-  it('renders titulo, cuerpo, scope, severidad fields', () => {
+  it('renders titulo, cuerpo, scope fields', () => {
     render(<AvisoForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
 
     expect(screen.getByLabelText(/título/i)).toBeTruthy()
     expect(screen.getByLabelText(/cuerpo/i)).toBeTruthy()
-    expect(screen.getByLabelText(/scope/i)).toBeTruthy()
-    expect(screen.getByLabelText(/severidad/i)).toBeTruthy()
+    expect(screen.getByLabelText(/audiencia/i)).toBeTruthy()
   })
 
   it('shows validation error when titulo is empty on submit', async () => {
@@ -37,6 +36,12 @@ describe('AvisoForm', () => {
     fireEvent.change(screen.getByLabelText(/cuerpo/i), {
       target: { value: 'Descripción del aviso' },
     })
+    fireEvent.change(screen.getByLabelText(/vigente desde/i), {
+      target: { value: '2024-06-01T08:00' },
+    })
+    fireEvent.change(screen.getByLabelText(/vigente hasta/i), {
+      target: { value: '2024-12-31T23:59' },
+    })
 
     fireEvent.click(screen.getByRole('button', { name: /publicar/i }))
 
@@ -45,6 +50,8 @@ describe('AvisoForm', () => {
         expect.objectContaining({
           titulo: 'Recordatorio',
           cuerpo: 'Descripción del aviso',
+          vig_desde: new Date('2024-06-01T08:00').toISOString(),
+          vig_hasta: new Date('2024-12-31T23:59').toISOString(),
         }),
       )
     })

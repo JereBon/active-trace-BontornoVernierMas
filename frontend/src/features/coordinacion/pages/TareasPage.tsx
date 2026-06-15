@@ -3,16 +3,19 @@ import { useState } from 'react'
 import { TablaTareas } from '../components/tareas/TablaTareas'
 import { HiloComentarios } from '../components/tareas/HiloComentarios'
 import { TareaEstadoSelector } from '../components/tareas/TareaEstadoSelector'
-import { useCreateTarea, useUpdateTarea } from '../hooks/useTareas'
+import { useCambiarEstadoTarea, useCreateTarea } from '../hooks/useTareas'
 import type { Tarea, TareaCreate, TareaEstado } from '../types'
+import { useUsuarios } from '@/features/admin/hooks/useUsuarios'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { PageHelp } from '@/shared/components/PageHelp'
+import { helpContent } from '@/shared/utils/helpContent'
 
 const tareaSchema = z.object({
   titulo: z.string().min(1, 'El título es requerido'),
   descripcion: z.string().nullable().optional(),
-  prioridad: z.enum(['baja', 'media', 'alta']),
+  asignado_a: z.string().uuid('Seleccioná un usuario'),
 })
 
 type TareaFormValues = z.infer<typeof tareaSchema>
@@ -21,18 +24,19 @@ export function TareasPage() {
   const [showForm, setShowForm] = useState(false)
   const [selectedTarea, setSelectedTarea] = useState<Tarea | null>(null)
   const createTarea = useCreateTarea()
-  const updateTarea = useUpdateTarea()
+  const cambiarEstado = useCambiarEstadoTarea()
+  const { data: usuarios = [] } = useUsuarios()
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<TareaFormValues>({
     resolver: zodResolver(tareaSchema),
-    defaultValues: { titulo: '', descripcion: null, prioridad: 'media' },
+    defaultValues: { titulo: '', descripcion: null, asignado_a: '' },
   })
 
   const onSubmit = (data: TareaFormValues) => {
     const payload: TareaCreate = {
       titulo: data.titulo,
       descripcion: data.descripcion ?? null,
-      prioridad: data.prioridad,
+      asignado_a: data.asignado_a,
     }
     createTarea.mutate(payload, {
       onSuccess: () => { setShowForm(false); reset() },
@@ -41,8 +45,8 @@ export function TareasPage() {
 
   const handleEstadoChange = (nuevoEstado: TareaEstado) => {
     if (!selectedTarea) return
-    updateTarea.mutate(
-      { id: selectedTarea.id, payload: { estado: nuevoEstado } },
+    cambiarEstado.mutate(
+      { id: selectedTarea.id, estado: nuevoEstado },
       { onSuccess: () => setSelectedTarea((prev) => prev ? { ...prev, estado: nuevoEstado } : prev) },
     )
   }
@@ -51,12 +55,15 @@ export function TareasPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800">Tareas</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Nueva Tarea
-        </button>
+        <div className="flex items-center gap-2">
+          <PageHelp>{helpContent.tareas}</PageHelp>
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Nueva Tarea
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -65,7 +72,7 @@ export function TareasPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label htmlFor="titulo-tarea" className="block text-sm font-medium text-gray-700 mb-1">
-                Título
+                Título <span className="text-red-500">*</span>
               </label>
               <input
                 id="titulo-tarea"
@@ -75,18 +82,33 @@ export function TareasPage() {
               {errors.titulo && <p className="text-red-600 text-xs mt-1">{errors.titulo.message}</p>}
             </div>
             <div>
-              <label htmlFor="prioridad-tarea" className="block text-sm font-medium text-gray-700 mb-1">
-                Prioridad
+              <label htmlFor="descripcion-tarea" className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción
+              </label>
+              <textarea
+                id="descripcion-tarea"
+                {...register('descripcion')}
+                rows={2}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor="asignado_a-tarea" className="block text-sm font-medium text-gray-700 mb-1">
+                Asignado a <span className="text-red-500">*</span>
               </label>
               <select
-                id="prioridad-tarea"
-                {...register('prioridad')}
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
+                id="asignado_a-tarea"
+                {...register('asignado_a')}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white"
               >
-                <option value="baja">Baja</option>
-                <option value="media">Media</option>
-                <option value="alta">Alta</option>
+                <option value="">— Seleccioná un usuario —</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre} {u.apellidos}
+                  </option>
+                ))}
               </select>
+              {errors.asignado_a && <p className="text-red-600 text-xs mt-1">{errors.asignado_a.message}</p>}
             </div>
             <div className="flex justify-end gap-3">
               <button
@@ -127,7 +149,7 @@ export function TareasPage() {
                 tareaId={selectedTarea.id}
                 estadoActual={selectedTarea.estado}
                 onChange={handleEstadoChange}
-                disabled={updateTarea.isPending}
+                disabled={cambiarEstado.isPending}
               />
             </div>
             <HiloComentarios tareaId={selectedTarea.id} />

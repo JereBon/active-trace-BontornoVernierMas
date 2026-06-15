@@ -9,9 +9,10 @@ interface Props {
 }
 
 const ESTADOS: { value: TareaEstado; label: string }[] = [
-  { value: 'pendiente', label: 'Pendiente' },
-  { value: 'en_progreso', label: 'En Progreso' },
-  { value: 'completada', label: 'Completada' },
+  { value: 'Pendiente', label: 'Pendiente' },
+  { value: 'En_progreso', label: 'En Progreso' },
+  { value: 'Resuelta', label: 'Resuelta' },
+  { value: 'Cancelada', label: 'Cancelada' },
 ]
 
 export function TareaEstadoSelector({ tareaId: _tareaId, estadoActual, onChange, disabled }: Props) {

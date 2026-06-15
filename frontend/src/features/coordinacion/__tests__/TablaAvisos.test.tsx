@@ -1,5 +1,5 @@
 // __tests__/TablaAvisos.test.tsx
-// TDD tests for TablaAvisos — render activos/archivados, badge severidad, botón archivar.
+// TDD tests for TablaAvisos — render activos/archivados, botón archivar.
 
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -24,15 +24,17 @@ function wrapper({ children }: { children: ReactNode }) {
 function makeAviso(overrides: Partial<Aviso> = {}): Aviso {
   return {
     id: crypto.randomUUID(),
+    tenant_id: 'tenant-1',
     titulo: 'Aviso de prueba',
     cuerpo: 'Contenido del aviso',
-    scope: 'todos',
-    severidad: 'info',
-    vigencia_hasta: null,
-    requiere_ack: false,
-    archivado: false,
+    scope: 'TODOS',
+    scope_valor: null,
+    vig_desde: '2024-06-01T00:00:00Z',
+    vig_hasta: '2024-12-31T23:59:00Z',
+    activo: true,
+    publicado_por: crypto.randomUUID(),
     created_at: '2024-01-01T00:00:00Z',
-    tenant_id: 'tenant-1',
+    updated_at: '2024-01-01T00:00:00Z',
     ...overrides,
   }
 }
@@ -40,18 +42,16 @@ function makeAviso(overrides: Partial<Aviso> = {}): Aviso {
 describe('TablaAvisos', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('renders aviso rows with title and severity badge', async () => {
+  it('renders aviso rows with title and scope', async () => {
     mockGetAvisos.mockResolvedValueOnce([
-      makeAviso({ titulo: 'Aviso Crítico', severidad: 'critico' }),
-      makeAviso({ titulo: 'Aviso Info', severidad: 'info' }),
+      makeAviso({ titulo: 'Aviso General', scope: 'TODOS' }),
+      makeAviso({ titulo: 'Aviso Coordinadores', scope: 'ROL', scope_valor: 'COORDINADOR' }),
     ])
 
     render(<TablaAvisos />, { wrapper })
 
-    expect(await screen.findByText('Aviso Crítico')).toBeTruthy()
-    expect(screen.getByText('Aviso Info')).toBeTruthy()
-    // Severity badge for critico
-    expect(screen.getByText(/critico/i)).toBeTruthy()
+    expect(await screen.findByText('Aviso General')).toBeTruthy()
+    expect(screen.getByText('Aviso Coordinadores')).toBeTruthy()
   })
 
   it('shows empty state when no avisos exist', async () => {
@@ -65,7 +65,7 @@ describe('TablaAvisos', () => {
 
   it('renders archivar button for active avisos', async () => {
     mockGetAvisos.mockResolvedValueOnce([
-      makeAviso({ titulo: 'Aviso Activo', archivado: false }),
+      makeAviso({ titulo: 'Aviso Activo', activo: true }),
     ])
 
     render(<TablaAvisos />, { wrapper })
@@ -76,7 +76,7 @@ describe('TablaAvisos', () => {
 
   it('does not show archivar button for already archived avisos', async () => {
     mockGetAvisos.mockResolvedValueOnce([
-      makeAviso({ titulo: 'Aviso Archivado', archivado: true }),
+      makeAviso({ titulo: 'Aviso Archivado', activo: false }),
     ])
 
     render(<TablaAvisos />, { wrapper })

@@ -49,7 +49,7 @@ class PadronParseError(Exception):
 
 
 # Required column names (case-insensitive match)
-_REQUIRED_COLUMNS = {"nombre", "apellidos", "email", "comision", "regional"}
+_REQUIRED_COLUMNS = {"nombre", "apellidos", "email", "comision"}
 
 
 def _normalize_header(header: str) -> str:

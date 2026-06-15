@@ -1,6 +1,7 @@
 // features/coordinacion/components/tareas/HiloComentarios.tsx
 import { useState } from 'react'
 import { useComentarios, useCreateComentario } from '../../hooks/useTareas'
+import { useUsuarios } from '@/features/admin/hooks/useUsuarios'
 
 interface Props {
   tareaId: string
@@ -8,8 +9,14 @@ interface Props {
 
 export function HiloComentarios({ tareaId }: Props) {
   const { data: comentarios = [], isLoading } = useComentarios(tareaId)
+  const { data: usuarios = [] } = useUsuarios()
   const createComentario = useCreateComentario(tareaId)
   const [contenido, setContenido] = useState('')
+
+  const nombreAutor = (id: string) => {
+    const u = usuarios.find((u) => u.id === id)
+    return u ? `${u.nombre} ${u.apellidos}` : id.slice(0, 8) + '…'
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,7 +41,7 @@ export function HiloComentarios({ tareaId }: Props) {
         <ul className="space-y-2">
           {comentarios.map((c) => (
             <li key={c.id} className="bg-gray-50 rounded p-3 text-sm">
-              <span className="font-medium text-gray-800">{c.autor_nombre}</span>
+              <span className="text-xs font-medium text-gray-700">{nombreAutor(c.autor_id)}</span>
               <span className="text-gray-400 text-xs ml-2">
                 {new Date(c.created_at).toLocaleDateString('es-AR')}
               </span>

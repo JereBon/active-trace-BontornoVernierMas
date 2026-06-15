@@ -48,6 +48,19 @@ class AvisoPatch(BaseModel):
     activo: bool = Field(..., description="False para desactivar (soft delete)")
 
 
+class AvisoUpdate(BaseModel):
+    """Request body for PUT /v1/avisos/{id}. Updates content fields."""
+
+    model_config = _FORBID
+
+    titulo: str | None = Field(default=None, min_length=1, max_length=300)
+    cuerpo: str | None = Field(default=None, min_length=1)
+    scope: AvisoScope | None = Field(default=None)
+    scope_valor: str | None = Field(default=None)
+    vig_desde: datetime | None = Field(default=None)
+    vig_hasta: datetime | None = Field(default=None)
+
+
 class AvisoOut(BaseModel):
     """Response schema for Aviso resources."""
 

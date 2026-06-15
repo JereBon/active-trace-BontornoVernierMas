@@ -3,11 +3,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   createElement,
   type ReactNode,
 } from 'react'
 import { setAccessToken, clearSession } from '@/shared/services/api'
+import { queryClient } from '@/shared/queryClient'
 import { loginApi, refreshApi } from '@/features/auth/services/authService'
 import {
   isAuthChallenge,
@@ -15,6 +17,21 @@ import {
   type LoginRequest,
   type User,
 } from '@/features/auth/types/auth.types'
+
+function decodeUserFromToken(token: string): User | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return {
+      id: payload.sub ?? '',
+      email: '',
+      full_name: '',
+      tenant_id: payload.tenant_id ?? '',
+      roles: payload.roles ?? [],
+    }
+  } catch {
+    return null
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Context shape
@@ -48,9 +65,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [challenge, setChallenge] = useState<AuthChallenge | null>(null)
+  // Guard against React 18 StrictMode double-firing this effect with the same token.
+  const refreshFiredRef = useRef(false)
 
   // On mount: attempt silent refresh to restore session across reloads
   useEffect(() => {
+    if (refreshFiredRef.current) return
+    refreshFiredRef.current = true
+
     const rt = localStorage.getItem('rt')
     if (!rt) {
       setIsLoading(false)
@@ -60,8 +82,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refreshApi(rt)
       .then((data) => {
         setAccessToken(data.access_token)
+        localStorage.setItem('rt', data.refresh_token)
         setIsAuthenticated(true)
-        // user details require a GET /api/auth/me call — added in a future change
+        const u = decodeUserFromToken(data.access_token)
+        if (u) setUser(u)
       })
       .catch(() => {
         localStorage.removeItem('rt')
@@ -82,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     setAccessToken(outcome.access_token)
     localStorage.setItem('rt', outcome.refresh_token)
-    setUser(outcome.user)
+    setUser(outcome.user ?? decodeUserFromToken(outcome.access_token))
     setIsAuthenticated(true)
     setChallenge(null)
   }, [])
@@ -92,6 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsAuthenticated(false)
     setChallenge(null)
     clearSession()
+    queryClient.clear()
   }, [])
 
   const value: AuthContextValue = {

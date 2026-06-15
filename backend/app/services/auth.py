@@ -33,6 +33,7 @@ from app.core.security import (
 from app.repositories.password_reset_token import PasswordResetTokenRepository
 from app.repositories.refresh_token import RefreshTokenRepository
 from app.repositories.usuario import UsuarioRepository
+from app.repositories.usuario_rol import UsuarioRolRepository
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -375,11 +376,13 @@ class AuthService:
         settings = get_settings()
 
         access_expire = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        ur_repo = UsuarioRolRepository(self._session, tenant_id)
+        roles = await ur_repo.get_roles_efectivos(usuario_id)
         access_token = create_access_token(
             {
                 "sub": str(usuario_id),
                 "tenant_id": str(tenant_id),
-                "roles": [],  # populated in C-04
+                "roles": roles,
                 "type": "access",
             },
             expires_delta=access_expire,

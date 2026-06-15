@@ -1,6 +1,8 @@
 // features/finanzas/pages/PeriodoPage.tsx
 import { useState } from 'react'
 import { VistaPeriodo } from '../components/VistaPeriodo'
+import { PageHelp } from '@/shared/components/PageHelp'
+import { helpContent } from '@/shared/utils/helpContent'
 
 export function PeriodoPage() {
   const [cohorteId, setCohorteId] = useState('')
@@ -18,6 +20,10 @@ export function PeriodoPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-gray-800">Liquidaciones del Periodo</h2>
+        <PageHelp>{helpContent.periodo}</PageHelp>
+      </div>
       {/* Filtros */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
         <div>

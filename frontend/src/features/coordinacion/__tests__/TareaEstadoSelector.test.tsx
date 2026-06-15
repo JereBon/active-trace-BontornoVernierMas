@@ -10,13 +10,13 @@ describe('TareaEstadoSelector', () => {
     render(
       <TareaEstadoSelector
         tareaId="t1"
-        estadoActual="pendiente"
+        estadoActual="Pendiente"
         onChange={vi.fn()}
       />,
     )
 
     const select = screen.getByRole('combobox') as HTMLSelectElement
-    expect(select.value).toBe('pendiente')
+    expect(select.value).toBe('Pendiente')
   })
 
   it('calls onChange with new estado when selection changes', () => {
@@ -24,30 +24,31 @@ describe('TareaEstadoSelector', () => {
     render(
       <TareaEstadoSelector
         tareaId="t1"
-        estadoActual="pendiente"
+        estadoActual="Pendiente"
         onChange={onChange}
       />,
     )
 
     const select = screen.getByRole('combobox')
-    fireEvent.change(select, { target: { value: 'completada' } })
+    fireEvent.change(select, { target: { value: 'En_progreso' } })
 
-    expect(onChange).toHaveBeenCalledWith('completada')
+    expect(onChange).toHaveBeenCalledWith('En_progreso')
   })
 
-  it('renders all three estado options', () => {
+  it('renders all four estado options', () => {
     render(
       <TareaEstadoSelector
         tareaId="t1"
-        estadoActual="en_progreso"
+        estadoActual="En_progreso"
         onChange={vi.fn()}
       />,
     )
 
     const options = screen.getAllByRole('option')
     const values = options.map((o) => (o as HTMLOptionElement).value)
-    expect(values).toContain('pendiente')
-    expect(values).toContain('en_progreso')
-    expect(values).toContain('completada')
+    expect(values).toContain('Pendiente')
+    expect(values).toContain('En_progreso')
+    expect(values).toContain('Resuelta')
+    expect(values).toContain('Cancelada')
   })
 })

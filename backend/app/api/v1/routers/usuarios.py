@@ -104,6 +104,25 @@ async def update_usuario(
 
 
 @router.put(
+    "/users/{usuario_id}/activate",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission(USUARIOS_GESTIONAR))],
+)
+async def activate_usuario(
+    usuario_id: uuid.UUID,
+    session: DBSession,
+    current_user: CurrentUser,
+) -> None:
+    """Activate (re-enable) a usuario. Idempotent."""
+    svc = UsuarioService(session, current_user.tenant_id)
+    try:
+        await svc.activar_usuario(usuario_id)
+    except NotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario not found")
+    await session.commit()
+
+
+@router.put(
     "/users/{usuario_id}/deactivate",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_permission(USUARIOS_GESTIONAR))],

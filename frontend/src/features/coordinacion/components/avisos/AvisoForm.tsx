@@ -2,50 +2,68 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { AvisoCreate } from '../../types'
+import type { Aviso, AvisoCreate } from '../../types'
+import { useUsuarios } from '@/features/admin/hooks/useUsuarios'
+
+const SCOPES = ['TODOS', 'ROL', 'USUARIO'] as const
+const ROLES_SISTEMA = ['ALUMNO', 'TUTOR', 'PROFESOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS'] as const
 
 const schema = z.object({
   titulo: z.string().min(1, 'El título es requerido'),
   cuerpo: z.string().min(1, 'El cuerpo es requerido'),
-  scope: z.enum(['todos', 'coordinadores', 'profesores', 'alumnos']),
-  severidad: z.enum(['info', 'advertencia', 'critico']),
-  vigencia_hasta: z.string().nullable().optional(),
-  requiere_ack: z.boolean(),
+  scope: z.enum(SCOPES).default('TODOS'),
+  scope_valor: z.string().nullable().optional(),
+  vig_desde: z.string().min(1, 'La fecha de inicio es requerida'),
+  vig_hasta: z.string().min(1, 'La fecha de fin es requerida'),
 })
 
 type FormValues = z.infer<typeof schema>
 
 interface Props {
+  defaultValues?: Aviso
   onSubmit: (data: AvisoCreate) => void
   onCancel: () => void
   isLoading?: boolean
 }
 
-export function AvisoForm({ onSubmit, onCancel, isLoading }: Props) {
+const toLocalInput = (iso: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export function AvisoForm({ defaultValues, onSubmit, onCancel, isLoading }: Props) {
+  const { data: usuarios = [] } = useUsuarios()
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      titulo: '',
-      cuerpo: '',
-      scope: 'todos',
-      severidad: 'info',
-      vigencia_hasta: null,
-      requiere_ack: false,
+      titulo: defaultValues?.titulo ?? '',
+      cuerpo: defaultValues?.cuerpo ?? '',
+      scope: (defaultValues?.scope as typeof SCOPES[number]) ?? 'TODOS',
+      scope_valor: defaultValues?.scope_valor ?? null,
+      vig_desde: defaultValues ? toLocalInput(defaultValues.vig_desde) : '',
+      vig_hasta: defaultValues ? toLocalInput(defaultValues.vig_hasta) : '',
     },
   })
+
+  const scope = watch('scope')
+
+  const toUTCISO = (localStr: string) => new Date(localStr).toISOString()
 
   const onValid = (data: FormValues) => {
     onSubmit({
       titulo: data.titulo,
       cuerpo: data.cuerpo,
       scope: data.scope,
-      severidad: data.severidad,
-      vigencia_hasta: data.vigencia_hasta ?? null,
-      requiere_ack: data.requiere_ack,
+      scope_valor: data.scope_valor ?? null,
+      vig_desde: toUTCISO(data.vig_desde),
+      vig_hasta: toUTCISO(data.vig_hasta),
     })
   }
 
@@ -53,7 +71,7 @@ export function AvisoForm({ onSubmit, onCancel, isLoading }: Props) {
     <form onSubmit={handleSubmit(onValid)} className="space-y-4">
       <div>
         <label htmlFor="titulo" className="block text-sm font-medium text-gray-700 mb-1">
-          Título
+          Título <span className="text-red-500">*</span>
         </label>
         <input
           id="titulo"
@@ -68,7 +86,7 @@ export function AvisoForm({ onSubmit, onCancel, isLoading }: Props) {
 
       <div>
         <label htmlFor="cuerpo" className="block text-sm font-medium text-gray-700 mb-1">
-          Cuerpo
+          Cuerpo <span className="text-red-500">*</span>
         </label>
         <textarea
           id="cuerpo"
@@ -85,58 +103,80 @@ export function AvisoForm({ onSubmit, onCancel, isLoading }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="scope" className="block text-sm font-medium text-gray-700 mb-1">
-            Scope
+            Audiencia
           </label>
           <select
             id="scope"
             {...register('scope')}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
           >
-            <option value="todos">Todos</option>
-            <option value="coordinadores">Coordinadores</option>
-            <option value="profesores">Profesores</option>
-            <option value="alumnos">Alumnos</option>
+            <option value="TODOS">Todos</option>
+            <option value="ROL">Por Rol</option>
+            <option value="USUARIO">Usuario específico</option>
           </select>
         </div>
 
+        {scope !== 'TODOS' && (
+          <div>
+            <label htmlFor="scope_valor" className="block text-sm font-medium text-gray-700 mb-1">
+              {scope === 'ROL' ? 'Rol' : 'UUID de Usuario'}
+            </label>
+            {scope === 'ROL' ? (
+              <select
+                id="scope_valor"
+                {...register('scope_valor')}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white"
+              >
+                <option value="">— Seleccioná un rol —</option>
+                {ROLES_SISTEMA.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            ) : (
+              <select
+                id="scope_valor"
+                {...register('scope_valor')}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white"
+              >
+                <option value="">— Seleccioná un usuario —</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>{u.nombre} {u.apellidos}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="severidad" className="block text-sm font-medium text-gray-700 mb-1">
-            Severidad
+          <label htmlFor="vig_desde" className="block text-sm font-medium text-gray-700 mb-1">
+            Vigente desde <span className="text-red-500">*</span>
           </label>
-          <select
-            id="severidad"
-            {...register('severidad')}
+          <input
+            id="vig_desde"
+            type="datetime-local"
+            {...register('vig_desde')}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-          >
-            <option value="info">Info</option>
-            <option value="advertencia">Advertencia</option>
-            <option value="critico">Crítico</option>
-          </select>
+          />
+          {errors.vig_desde && (
+            <p className="text-red-600 text-xs mt-1">{errors.vig_desde.message}</p>
+          )}
         </div>
-      </div>
-
-      <div>
-        <label htmlFor="vigencia_hasta" className="block text-sm font-medium text-gray-700 mb-1">
-          Vigencia hasta
-        </label>
-        <input
-          id="vigencia_hasta"
-          type="date"
-          {...register('vigencia_hasta')}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-        />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          id="requiere_ack"
-          type="checkbox"
-          {...register('requiere_ack')}
-          className="h-4 w-4 text-blue-600"
-        />
-        <label htmlFor="requiere_ack" className="text-sm text-gray-700">
-          Requiere confirmación (Ack)
-        </label>
+        <div>
+          <label htmlFor="vig_hasta" className="block text-sm font-medium text-gray-700 mb-1">
+            Vigente hasta <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="vig_hasta"
+            type="datetime-local"
+            {...register('vig_hasta')}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+          />
+          {errors.vig_hasta && (
+            <p className="text-red-600 text-xs mt-1">{errors.vig_hasta.message}</p>
+          )}
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
@@ -152,7 +192,7 @@ export function AvisoForm({ onSubmit, onCancel, isLoading }: Props) {
           disabled={isLoading}
           className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          Publicar
+          {defaultValues ? 'Guardar cambios' : 'Publicar'}
         </button>
       </div>
     </form>

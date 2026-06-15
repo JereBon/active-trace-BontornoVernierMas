@@ -74,9 +74,11 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Skip refresh for the refresh endpoint itself to avoid infinite loops
-    if (originalRequest.url?.includes('/api/auth/refresh')) {
-      clearSession()
+    // Skip refresh for auth endpoints — login 401 = bad credentials, not expired session
+    if (
+      originalRequest.url?.includes('/api/auth/refresh') ||
+      originalRequest.url?.includes('/api/auth/login')
+    ) {
       return Promise.reject(error)
     }
 
@@ -100,16 +102,17 @@ api.interceptors.response.use(
     try {
       const refreshToken = localStorage.getItem('rt')
       if (!refreshToken) {
-        clearSession()
+        forceLogout()
         return Promise.reject(error)
       }
 
-      const { data } = await axios.post<{ access_token: string }>(
+      const { data } = await axios.post<{ access_token: string; refresh_token: string }>(
         `${import.meta.env.VITE_API_BASE_URL as string}/api/auth/refresh`,
         { refresh_token: refreshToken },
       )
 
       setAccessToken(data.access_token)
+      localStorage.setItem('rt', data.refresh_token)
       processQueue(null, data.access_token)
 
       originalRequest.headers.set(
@@ -119,7 +122,7 @@ api.interceptors.response.use(
       return api(originalRequest)
     } catch (refreshError) {
       processQueue(refreshError, null)
-      clearSession()
+      forceLogout()
       return Promise.reject(refreshError)
     } finally {
       isRefreshing = false
@@ -128,11 +131,17 @@ api.interceptors.response.use(
 )
 
 // ---------------------------------------------------------------------------
-// Session cleanup helper (imported by useAuth for logout)
+// Session cleanup helpers
 // ---------------------------------------------------------------------------
+
+// Used by logout: clears tokens, lets React Router handle navigation
 export function clearSession(): void {
   setAccessToken(null)
   localStorage.removeItem('rt')
-  // Redirect to login — use location.replace so back-button doesn't return
+}
+
+// Used by the 401 interceptor: clears tokens + hard redirect (no React Router)
+function forceLogout(): void {
+  clearSession()
   window.location.replace('/login')
 }

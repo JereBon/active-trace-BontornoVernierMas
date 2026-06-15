@@ -7,7 +7,7 @@ export interface Carrera {
   id: string
   nombre: string
   codigo: string
-  activa: boolean
+  estado: string
   tenant_id: string
   created_at: string
 }
@@ -20,38 +20,41 @@ export interface CarreraCreate {
 export interface CarreraUpdate {
   nombre?: string
   codigo?: string
-  activa?: boolean
 }
 
 export interface Cohorte {
   id: string
   carrera_id: string
-  carrera_nombre: string | null
+  carrera_nombre?: string | null
+  nombre?: string | null
   anio: number
-  plan: string | null
-  activa: boolean
+  plan?: string | null
+  estado: string
   tenant_id: string
   created_at: string
 }
 
 export interface CohorteCreate {
   carrera_id: string
+  nombre: string
   anio: number
-  plan?: string | null
+  vig_desde: string
+  vig_hasta?: string | null
 }
 
 export interface CohorteUpdate {
+  nombre?: string
   anio?: number
-  plan?: string | null
-  activa?: boolean
+  vig_desde?: string
+  vig_hasta?: string | null
 }
 
 export interface Materia {
   id: string
   nombre: string
   codigo: string
-  categoria_clave: string | null
-  activa: boolean
+  categoria_clave?: string | null
+  estado: string
   tenant_id: string
   created_at: string
 }
@@ -59,14 +62,11 @@ export interface Materia {
 export interface MateriaCreate {
   nombre: string
   codigo: string
-  categoria_clave?: string | null
 }
 
 export interface MateriaUpdate {
   nombre?: string
   codigo?: string
-  categoria_clave?: string | null
-  activa?: boolean
 }
 
 // ─── Usuarios del Tenant ──────────────────────────────────────────────────────
@@ -75,11 +75,11 @@ export type RolUsuario = 'ALUMNO' | 'TUTOR' | 'PROFESOR' | 'COORDINADOR' | 'NEXO
 
 export interface Usuario {
   id: string
-  email: string
+  email?: string
   nombre: string
-  apellido: string
+  apellidos: string
   legajo: string | null
-  roles: RolUsuario[]
+  roles?: RolUsuario[]
   activo: boolean
   tenant_id: string
   created_at: string
@@ -92,10 +92,13 @@ export interface UsuarioActivarToggle {
 // ─── Auditoría ────────────────────────────────────────────────────────────────
 
 export interface PanelMetricas {
-  total_acciones: number
-  acciones_hoy: number
-  top_acciones: Array<{ accion: string; cantidad: number }>
-  top_actores: Array<{ actor_id: string; nombre: string | null; cantidad: number }>
+  total_acciones?: number
+  acciones_hoy?: number
+  top_acciones?: Array<{ accion: string; cantidad: number }>
+  top_actores?: Array<{ actor_id: string; nombre: string | null; cantidad: number }>
+  acciones_por_dia?: Array<{ fecha: string; cantidad: number }>
+  por_docente?: Array<{ nombre: string | null; cantidad: number }>
+  por_materia?: Array<{ nombre: string | null; cantidad: number }>
 }
 
 export interface LogEntry {

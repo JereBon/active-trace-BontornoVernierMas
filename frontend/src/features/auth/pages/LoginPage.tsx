@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import axios from 'axios'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { TwoFaChallengePlaceholder } from '@/features/auth/components/TwoFaChallengePlaceholder'
 import { Spinner } from '@/shared/components/Spinner'
@@ -63,8 +64,13 @@ export function LoginPage() {
       await login(values)
       // navigation happens via the useEffect above once isAuthenticated becomes true
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Error al iniciar sesión'
+      let message = 'Error al iniciar sesión'
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail
+        if (typeof detail === 'string') message = detail
+      } else if (err instanceof Error) {
+        message = err.message
+      }
       setError('root', { message })
     }
   }

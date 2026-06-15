@@ -66,6 +66,16 @@ class UsuarioService:
             raise NotFoundError(f"Usuario {usuario_id} not found")
         return decrypt_usuario(usuario)
 
+    async def activar_usuario(self, usuario_id: uuid.UUID) -> None:
+        """Activate (re-enable) a usuario. Idempotent.
+
+        Raises:
+            NotFoundError: if not found in this tenant.
+        """
+        found = await self._repo.activate(usuario_id)
+        if not found:
+            raise NotFoundError(f"Usuario {usuario_id} not found")
+
     async def desactivar_usuario(self, usuario_id: uuid.UUID) -> None:
         """Deactivate (soft-disable) a usuario.
 

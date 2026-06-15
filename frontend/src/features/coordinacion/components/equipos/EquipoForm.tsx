@@ -3,12 +3,17 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { EquipoDocente, EquipoDocenteCreate } from '../../types'
+import { useUsuarios } from '@/features/admin/hooks/useUsuarios'
+import { useMaterias } from '@/features/admin/hooks/useEstructura'
+
+const ROLES = ['PROFESOR', 'TUTOR', 'COORDINADOR', 'NEXO', 'ADMIN', 'FINANZAS'] as const
 
 const schema = z.object({
-  nombre: z.string().min(1, 'El nombre es requerido'),
-  descripcion: z.string().nullable().optional(),
-  vigencia_desde: z.string().nullable().optional(),
-  vigencia_hasta: z.string().nullable().optional(),
+  usuario_id: z.string().uuid('Seleccioná un usuario'),
+  rol: z.enum(ROLES),
+  materia_id: z.string().optional().or(z.literal('')),
+  desde: z.string().min(1, 'La fecha de inicio es requerida'),
+  hasta: z.string().optional().or(z.literal('')),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -18,9 +23,13 @@ interface Props {
   onSubmit: (data: EquipoDocenteCreate) => void
   onCancel: () => void
   isLoading?: boolean
+  isEditing?: boolean
 }
 
-export function EquipoForm({ defaultValues, onSubmit, onCancel, isLoading }: Props) {
+export function EquipoForm({ defaultValues, onSubmit, onCancel, isLoading, isEditing }: Props) {
+  const { data: usuarios = [] } = useUsuarios()
+  const { data: materias = [] } = useMaterias()
+
   const {
     register,
     handleSubmit,
@@ -28,72 +37,101 @@ export function EquipoForm({ defaultValues, onSubmit, onCancel, isLoading }: Pro
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      nombre: defaultValues?.nombre ?? '',
-      descripcion: defaultValues?.descripcion ?? null,
-      vigencia_desde: defaultValues?.vigencia_desde ?? null,
-      vigencia_hasta: defaultValues?.vigencia_hasta ?? null,
+      usuario_id: defaultValues?.usuario_id ?? '',
+      rol: (defaultValues?.rol as typeof ROLES[number]) ?? 'PROFESOR',
+      materia_id: defaultValues?.materia_id ?? '',
+      desde: defaultValues?.desde ?? '',
+      hasta: defaultValues?.hasta ?? '',
     },
   })
 
   const onValid = (data: FormValues) => {
     onSubmit({
-      nombre: data.nombre,
-      descripcion: data.descripcion ?? null,
-      vigencia_desde: data.vigencia_desde ?? null,
-      vigencia_hasta: data.vigencia_hasta ?? null,
+      usuario_id: data.usuario_id,
+      rol: data.rol,
+      materia_id: data.materia_id || null,
+      desde: data.desde,
+      hasta: data.hasta || null,
+      comisiones: [],
     })
   }
 
   return (
     <form onSubmit={handleSubmit(onValid)} className="space-y-4">
       <div>
-        <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-1">
-          Nombre
+        <label htmlFor="usuario_id" className="block text-sm font-medium text-gray-700 mb-1">
+          Usuario <span className="text-red-500">*</span>
         </label>
-        <input
-          id="nombre"
-          {...register('nombre')}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Nombre del equipo"
-        />
-        {errors.nombre && (
-          <p className="text-red-600 text-xs mt-1">{errors.nombre.message}</p>
+        <select
+          id="usuario_id"
+          {...register('usuario_id')}
+          disabled={isEditing}
+          className={`w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
+        >
+          <option value="">— Seleccioná un usuario —</option>
+          {usuarios.map((u) => (
+            <option key={u.id} value={u.id}>{u.nombre} {u.apellidos}</option>
+          ))}
+        </select>
+        {errors.usuario_id && (
+          <p className="text-red-600 text-xs mt-1">{errors.usuario_id.message}</p>
         )}
       </div>
 
       <div>
-        <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1">
-          Descripción
+        <label htmlFor="rol" className="block text-sm font-medium text-gray-700 mb-1">
+          Rol <span className="text-red-500">*</span>
         </label>
-        <textarea
-          id="descripcion"
-          {...register('descripcion')}
-          rows={3}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Descripción opcional"
-        />
+        <select
+          id="rol"
+          {...register('rol')}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {ROLES.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="materia_id" className="block text-sm font-medium text-gray-700 mb-1">
+          Materia
+        </label>
+        <select
+          id="materia_id"
+          {...register('materia_id')}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">— Sin materia específica —</option>
+          {materias.map((m) => (
+            <option key={m.id} value={m.id}>{m.nombre}</option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="vigencia_desde" className="block text-sm font-medium text-gray-700 mb-1">
-            Vigencia desde
+          <label htmlFor="desde" className="block text-sm font-medium text-gray-700 mb-1">
+            Desde <span className="text-red-500">*</span>
           </label>
           <input
-            id="vigencia_desde"
+            id="desde"
             type="date"
-            {...register('vigencia_desde')}
+            {...register('desde')}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
           />
+          {errors.desde && (
+            <p className="text-red-600 text-xs mt-1">{errors.desde.message}</p>
+          )}
         </div>
         <div>
-          <label htmlFor="vigencia_hasta" className="block text-sm font-medium text-gray-700 mb-1">
-            Vigencia hasta
+          <label htmlFor="hasta" className="block text-sm font-medium text-gray-700 mb-1">
+            Hasta
           </label>
           <input
-            id="vigencia_hasta"
+            id="hasta"
             type="date"
-            {...register('vigencia_hasta')}
+            {...register('hasta')}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
           />
         </div>

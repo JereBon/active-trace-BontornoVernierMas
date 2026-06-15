@@ -80,7 +80,7 @@ Cargá la skill correspondiente al contexto **ANTES** de escribir código. Aplic
 |--------|-----|------------------|
 | **Backend Core** | FastAPI / SQLAlchemy / migraciones / modelos | `fastapi-templates`, `postgresql-table-design`, `python-testing-patterns`, `test-driven-development` |
 | **Backend Aux** | Servicios, integraciones, seguridad, performance | `api-security-best-practices`, `postgresql-optimization`, `systematic-debugging` |
-| **Frontend** | React / TanStack / Tailwind / E2E | `typescript-advanced-types`, `tailwind-design-system`, `playwright-best-practices`, `vercel-react-best-practices`, `frontend-design`, `accessibility` |
+| **Frontend** | React / TanStack / Tailwind / E2E | `typescript-advanced-types`, `tailwind-design-system`, `playwright-best-practices`, `vercel-react-best-practices`, `frontend-design`, `accessibility`, `dashboard-crud-page`, `help-system-content` |
 | **DevOps** | Contenedores / build | `multi-stage-dockerfile` |
 | **Transversal** | Calidad / revisión | `code-review-excellence`, `systematic-debugging`, `security-review` |
 | **Orquestación** | SDD / OPSX / docs | `kb-creator`, `roadmap-generator`, `agent-instruction`, `find-skills` |

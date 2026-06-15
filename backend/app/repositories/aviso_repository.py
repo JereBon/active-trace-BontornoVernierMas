@@ -138,6 +138,20 @@ class AvisoRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_todos(self) -> list[Aviso]:
+        """Return ALL Avisos for this tenant (management view).
+
+        No scope, vigencia or activo filtering — returns everything so
+        COORDINADOR/ADMIN can see and manage all published notices.
+        """
+        stmt = (
+            select(Aviso)
+            .where(Aviso.tenant_id == self._tenant_id)
+            .order_by(Aviso.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     # ── AvisoAck writes ───────────────────────────────────────────────────────
 
     async def create_ack(

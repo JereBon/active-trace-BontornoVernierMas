@@ -23,15 +23,16 @@ const carreraSchema = z.object({
 })
 
 const cohorteSchema = z.object({
-  carrera_id: z.string().uuid('UUID inválido'),
+  carrera_id: z.string().uuid('Seleccioná una carrera'),
+  nombre: z.string().min(1, 'Requerido'),
   anio: z.coerce.number().min(2000).max(2100),
-  plan: z.string().optional(),
+  vig_desde: z.string().min(1, 'Requerido'),
+  vig_hasta: z.string().optional(),
 })
 
 const materiaSchema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   codigo: z.string().min(1, 'Requerido'),
-  categoria_clave: z.string().optional(),
 })
 
 type CarreraForm = z.infer<typeof carreraSchema>
@@ -59,9 +60,9 @@ function TablaCarreras({ rows }: { rows: Carrera[] }) {
               <td className="py-3 px-4 text-sm text-gray-600">{c.codigo}</td>
               <td className="py-3 px-4 text-sm">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                  c.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  c.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {c.activa ? 'Activa' : 'Inactiva'}
+                  {c.estado}
                 </span>
               </td>
             </tr>
@@ -123,14 +124,14 @@ function TablaCohortes({ rows }: { rows: Cohorte[] }) {
         <tbody>
           {rows.map((c) => (
             <tr key={c.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-              <td className="py-3 px-4 text-sm text-gray-900">{c.carrera_nombre ?? c.carrera_id}</td>
+              <td className="py-3 px-4 text-sm text-gray-900">{c.nombre ?? c.carrera_nombre ?? c.carrera_id}</td>
               <td className="py-3 px-4 text-sm text-gray-900">{c.anio}</td>
               <td className="py-3 px-4 text-sm text-gray-600">{c.plan ?? '—'}</td>
               <td className="py-3 px-4 text-sm">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                  c.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  c.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {c.activa ? 'Activa' : 'Inactiva'}
+                  {c.estado}
                 </span>
               </td>
             </tr>
@@ -145,6 +146,7 @@ function TablaCohortes({ rows }: { rows: Cohorte[] }) {
 
 function FormCohorte({ onClose }: { onClose: () => void }) {
   const create = useCreateCohorte()
+  const { data: carreras = [] } = useCarreras()
   const { register, handleSubmit, formState: { errors } } = useForm<CohorteForm>({
     resolver: zodResolver(cohorteSchema),
   })
@@ -154,9 +156,19 @@ function FormCohorte({ onClose }: { onClose: () => void }) {
       <h4 className="text-sm font-semibold text-gray-700">Nueva Cohorte</h4>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600">Carrera ID (UUID)</label>
-          <input {...register('carrera_id')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          <label className="block text-xs font-medium text-gray-600">Carrera</label>
+          <select {...register('carrera_id')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white">
+            <option value="">— Seleccioná una carrera —</option>
+            {carreras.map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre} ({c.codigo})</option>
+            ))}
+          </select>
           {errors.carrera_id && <p className="mt-1 text-xs text-red-500">{errors.carrera_id.message}</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600">Nombre</label>
+          <input {...register('nombre')} placeholder="ej: AGO-2026" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          {errors.nombre && <p className="mt-1 text-xs text-red-500">{errors.nombre.message}</p>}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600">Año</label>
@@ -164,8 +176,13 @@ function FormCohorte({ onClose }: { onClose: () => void }) {
           {errors.anio && <p className="mt-1 text-xs text-red-500">{errors.anio.message}</p>}
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">Plan</label>
-          <input {...register('plan')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          <label className="block text-xs font-medium text-gray-600">Vigencia desde</label>
+          <input {...register('vig_desde')} type="date" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          {errors.vig_desde && <p className="mt-1 text-xs text-red-500">{errors.vig_desde.message}</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600">Vigencia hasta (opcional)</label>
+          <input {...register('vig_hasta')} type="date" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
         </div>
       </div>
       <div className="flex justify-end gap-2">
@@ -201,9 +218,9 @@ function TablaMaterias({ rows }: { rows: Materia[] }) {
               <td className="py-3 px-4 text-sm text-gray-600">{m.categoria_clave ?? '—'}</td>
               <td className="py-3 px-4 text-sm">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                  m.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  m.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {m.activa ? 'Activa' : 'Inactiva'}
+                  {m.estado}
                 </span>
               </td>
             </tr>
@@ -235,11 +252,6 @@ function FormMateria({ onClose }: { onClose: () => void }) {
           <label className="block text-xs font-medium text-gray-600">Código</label>
           <input {...register('codigo')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           {errors.codigo && <p className="mt-1 text-xs text-red-500">{errors.codigo.message}</p>}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600">Categoría clave</label>
-          <input {...register('categoria_clave')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="ej: MATEMATICA" />
         </div>
       </div>
       <div className="flex justify-end gap-2">

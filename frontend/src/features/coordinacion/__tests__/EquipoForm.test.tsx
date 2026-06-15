@@ -9,19 +9,21 @@ describe('EquipoForm', () => {
   it('renders all required fields', () => {
     render(<EquipoForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
 
-    expect(screen.getByLabelText(/nombre/i)).toBeTruthy()
-    expect(screen.getByLabelText(/descripci/i)).toBeTruthy()
+    expect(screen.getByLabelText(/usuario id/i)).toBeTruthy()
+    expect(screen.getByLabelText(/^rol/i)).toBeTruthy()
+    expect(screen.getByLabelText(/desde/i)).toBeTruthy()
   })
 
-  it('shows validation error when nombre is empty and form is submitted', async () => {
+  it('shows validation error when usuario_id is not a valid UUID', async () => {
     const onSubmit = vi.fn()
     render(<EquipoForm onSubmit={onSubmit} onCancel={vi.fn()} />)
 
+    // Leave usuario_id empty — should fail UUID validation
     const submitBtn = screen.getByRole('button', { name: /guardar/i })
     fireEvent.click(submitBtn)
 
     await waitFor(() => {
-      expect(screen.getByText(/nombre es requerido/i)).toBeTruthy()
+      expect(screen.getByText(/uuid válido/i)).toBeTruthy()
     })
     expect(onSubmit).not.toHaveBeenCalled()
   })
@@ -30,8 +32,12 @@ describe('EquipoForm', () => {
     const onSubmit = vi.fn()
     render(<EquipoForm onSubmit={onSubmit} onCancel={vi.fn()} />)
 
-    fireEvent.change(screen.getByLabelText(/nombre/i), {
-      target: { value: 'Equipo Test' },
+    const validUUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+    fireEvent.change(screen.getByLabelText(/usuario id/i), {
+      target: { value: validUUID },
+    })
+    fireEvent.change(screen.getByLabelText(/desde/i), {
+      target: { value: '2024-03-01' },
     })
 
     const submitBtn = screen.getByRole('button', { name: /guardar/i })
@@ -39,7 +45,7 @@ describe('EquipoForm', () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ nombre: 'Equipo Test' }),
+        expect.objectContaining({ usuario_id: validUUID }),
       )
     })
   })
