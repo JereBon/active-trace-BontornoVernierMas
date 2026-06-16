@@ -1,0 +1,295 @@
+COMO CORRER EL PROYECTO — activia-trace
+========================================
+
+OPCION A — Verificar solo el fix de CORS (rapido, sin DB)
+----------------------------------------------------------
+
+cd backend
+rm -rf .venv && python3.13 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]" && pytest tests/test_config.py -v
+
+
+OPCION B — Levantar el proyecto completo
+-----------------------------------------
+
+1. Crear la base de datos (Postgres ya debe estar corriendo)
+
+    sudo -u postgres psql -c "CREATE USER activia WITH PASSWORD 'changeme';"
+    sudo -u postgres psql -c "CREATE DATABASE activia_trace OWNER activia;"
+
+2. Crear backend/.env
+
+    Desde la raiz del proyecto correr:
+
+        python3 crear_env.py
+
+    Eso crea backend/.env con estos valores:
+
+        DATABASE_URL=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace
+        DATABASE_URL_TEST=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace_test
+        SECRET_KEY=dev-secret-key-activia-trace-2026-local
+        ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000001
+        CORS_ALLOWED_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+
+    NOTA: CORS_ALLOWED_ORIGINS debe ser JSON array (con corchetes), no CSV.
+    NOTA: ENCRYPTION_KEY es solo para dev local.
+    Para produccion generarla con:
+        python3 -c "import secrets; print(secrets.token_hex(32))"
+
+3. Instalar dependencias del backend y correr migraciones
+
+    IMPORTANTE: el proyecto requiere Python 3.13. Si el venv ya existe o se
+    creo con otra version, borrarlo y recrearlo:
+
+    cd backend
+    rm -rf .venv && python3.13 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]" && alembic upgrade head
+
+4. Levantar el backend (en una terminal)
+
+    uvicorn app.main:app --reload --port 8000
+
+5. Levantar el frontend (en otra terminal)
+
+    cd frontend
+    npm install
+
+    Crear frontend/.env.local con:
+        VITE_API_BASE_URL=http://localhost:8000
+
+    npm run dev
+
+    La app queda en http://localhost:5173
+
+
+6. Cargar datos de prueba (seed)
+
+    cd backend
+    source .venv/bin/activate
+    DATABASE_URL=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace \
+    ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000001 \
+    SECRET_KEY=dev-secret-key-activia-trace-2026-local \
+    PYTHONPATH=. python scripts/seed_dev.py
+
+    Esto crea los siguientes usuarios (todos con la misma password):
+
+    ROL           EMAIL                    PASSWORD
+    -----------   -----------------------  ----------
+    ADMIN         admin@demo.edu           Demo1234!
+    COORDINADOR   coordinador@demo.edu     Demo1234!
+    PROFESOR      profesor@demo.edu        Demo1234!
+    TUTOR         tutor@demo.edu           Demo1234!
+
+    Tenant: Universidad Demo  (slug: demo)
+    Tenant ID: 00000000-0000-0000-0000-000000000001
+
+    NOTA: El seed es idempotente (ON CONFLICT DO NOTHING), se puede correr
+    varias veces sin problema.
+
+
+CREDENCIALES PARA INICIAR SESION
+----------------------------------
+
+    Ir a http://localhost:5173
+    Email:    admin@demo.edu
+    Password: Demo1234!
+
+    (Ver tabla completa de usuarios arriba)
+
+    IMPORTANTE: El .env.local del frontend ya incluye VITE_TENANT_ID para que
+    el login funcione. Si creas el .env.local a mano, asegurate de incluir:
+        VITE_TENANT_ID=00000000-0000-0000-0000-000000000001
+
+
+VERIFICAR EL FIX DE CORS (con el backend corriendo)
+-----------------------------------------------------
+
+    curl -I -X OPTIONS http://localhost:8000/api/auth/login \
+      -H "Origin: http://localhost:5173" \
+      -H "Access-Control-Request-Method: POST"
+
+    Respuesta esperada: Access-Control-Allow-Origin: http://localhost:5173
+    (antes del fix se veia "*", que el browser rechazaba con credentials=True)
+
+
+=======================================================================
+GUIA DE TESTS — QUE PROBAR CON ADMIN (admin@demo.edu / Demo1234!)
+=======================================================================
+
+Entrar a http://localhost:5173, loguearse como admin.
+
+-----------------------------------------------------------------------
+DASHBOARD  /dashboard
+-----------------------------------------------------------------------
+[ ] Ver tarjetas con contadores: Materias (2), Cohortes (2), Usuarios (4), Avisos (0)
+[ ] Ver links rapidos: Módulo comisión por materia (Programación I, Bases de Datos)
+[ ] Ver accesos rapidos: Coordinación, Administración, Finanzas, Monitor Global
+[ ] Ver panel "Avisos vigentes" — debe decir "Sin avisos activos"
+[ ] Ver panel "Mis tareas activas" — debe decir "Sin tareas pendientes"
+
+NOTA: el dashboard solo llama las APIs que el rol actual tiene permiso de ver.
+Un TUTOR no ve contadores de Materias/Usuarios pero no recibe 403s.
+
+-----------------------------------------------------------------------
+ADMIN / ESTRUCTURA  /admin/estructura
+-----------------------------------------------------------------------
+[ ] Ver tabla Carreras — debe aparecer "Ingeniería en Sistemas (IS) · Activa"
+[ ] Ver tabla Cohortes — deben aparecer "Cohorte 2024" y "Cohorte 2025 · Activa"
+[ ] Ver tabla Materias — deben aparecer "Programación I (PROG1)" y "Bases de Datos (BD1)"
+
+Crear carrera:
+[ ] Click "+ Agregar" en Carreras
+[ ] Completar Nombre="Licenciatura en Sistemas", Código="LIS" → Guardar
+[ ] La nueva carrera debe aparecer en la tabla
+
+Crear cohorte:
+[ ] Click "+ Agregar" en Cohortes
+[ ] Seleccionar la carrera recien creada
+[ ] Nombre="AGO-2026", Año=2026, Vigencia desde=2026-08-01 → Guardar
+[ ] La nueva cohorte debe aparecer en la tabla
+
+Crear materia:
+[ ] Click "+ Agregar" en Materias
+[ ] Nombre="Algoritmos", Código="ALG1" → Guardar
+[ ] La nueva materia debe aparecer en la tabla
+
+-----------------------------------------------------------------------
+ADMIN / USUARIOS  /admin/usuarios
+-----------------------------------------------------------------------
+[ ] Ver tabla con los 4 usuarios del seed: Admin Sistema, Carmen Coordinadora,
+    Pablo Profesor, Tomás Tutor — con sus roles en chips azules
+[ ] Verificar que todos aparecen como "Activo" (chip verde)
+
+Activar/Desactivar usuario:
+[ ] Click "Desactivar" en cualquier usuario (no en admin, para no bloquearse)
+[ ] El chip cambia a "Inactivo" (chip rojo), el botón pasa a "Activar"
+[ ] Click "Activar" — vuelve a "Activo"
+
+-----------------------------------------------------------------------
+ADMIN / AUDITORIA  /admin/auditoria
+-----------------------------------------------------------------------
+[ ] Ver métricas: "Total acciones" y "Acciones hoy" con valores > 0
+    (el seed y los logins anteriores ya generaron entradas)
+[ ] Ver "Top acciones" — debe listar las acciones más frecuentes (LOGIN, etc.)
+[ ] Ver tabla del log con columnas: Fecha, Actor, Acción, Recurso, IP
+
+Filtros:
+[ ] Escribir "LOGIN" en el campo Acción → Click "Filtrar"
+[ ] Solo deben aparecer entradas de LOGIN
+[ ] Borrar el filtro y poner fecha Desde=2026-01-01, hasta=hoy → Filtrar
+[ ] Deben aparecer todas las entradas de este año
+[ ] Borrar filtros → Filtrar para volver al estado completo
+
+-----------------------------------------------------------------------
+COORDINACION / EQUIPOS  /coordinacion/equipos
+-----------------------------------------------------------------------
+[ ] Ver tabla de asignaciones docentes (Pablo=PROFESOR en PROG1, Tomas=TUTOR
+    en PROG1, Carmen=COORDINADOR en BD)
+[ ] Filtrar por responsable en el selector — solo debe mostrar las asignaciones
+    del usuario seleccionado
+
+Crear asignación:
+[ ] Click "Nueva Asignación"
+[ ] Completar el formulario (usuario, rol, materia, carrera, cohorte, desde)
+[ ] Guardar — debe aparecer en la tabla
+
+-----------------------------------------------------------------------
+COORDINACION / AVISOS  /coordinacion/avisos
+-----------------------------------------------------------------------
+[ ] Ver la lista de avisos — inicialmente vacía ("Sin avisos")
+[ ] Crear un aviso: titulo, cuerpo, fecha vigencia hasta → Guardar
+[ ] El aviso debe aparecer en la lista
+[ ] Volver al Dashboard — debe aparecer en el panel "Avisos vigentes"
+
+-----------------------------------------------------------------------
+COORDINACION / TAREAS  /coordinacion/tareas
+-----------------------------------------------------------------------
+[ ] Ver lista de tareas (vacía inicialmente)
+[ ] Crear tarea: titulo, descripcion (opcional), asignada a un usuario → Guardar
+[ ] La tarea debe aparecer con estado "Pendiente"
+[ ] Cambiar estado → En progreso → Completada
+
+-----------------------------------------------------------------------
+COORDINACION / CUATRIMESTRE  /coordinacion/cuatrimestre
+-----------------------------------------------------------------------
+[ ] Ver configuración del cuatrimestre activo
+
+COORDINACION / FECHAS  /coordinacion/fechas
+[ ] Ver tabla de fechas académicas
+
+COORDINACION / PROGRAMAS  /coordinacion/programas
+[ ] Ver lista de programas de materias
+
+COORDINACION / PADRON  /coordinacion/padron
+[ ] Ver padrón de alumnos (vacío sin importación previa)
+
+-----------------------------------------------------------------------
+MODULO COMISION  /comision/:materiaId
+-----------------------------------------------------------------------
+Desde el Dashboard, click en "Programación I" o "Bases de Datos".
+
+/comision/:id/atrasados
+[ ] Ver análisis de alumnos atrasados (vacío sin calificaciones importadas)
+
+/comision/:id/sin-corregir
+[ ] Ver entregas sin corregir (vacío sin importación)
+
+/comision/:id/comunicacion
+[ ] Ver tabla de comunicaciones pendientes
+    (Los emails se toman del padrón descifrado — ya no hay placeholders)
+
+/comision/:id/importacion
+[ ] Ver el formulario de importación de calificaciones desde Moodle
+    El campo "ID de asignación" se autocompleta si tenés una asignación
+    docente para esta materia (campo verde = auto, gris = manual).
+
+/comision/:id/monitor
+[ ] Ver el monitor de estado de la comisión
+
+-----------------------------------------------------------------------
+FINANZAS  /finanzas
+-----------------------------------------------------------------------
+NOTA: el rol ADMIN tiene acceso pero las liquidaciones son funcionalidad
+pendiente de implementación completa.
+
+[ ] /finanzas/periodo   — ver período activo
+[ ] /finanzas/historial — ver historial de liquidaciones
+[ ] /finanzas/grilla    — ver grilla de honorarios
+[ ] /finanzas/facturas  — ver facturas
+
+-----------------------------------------------------------------------
+COORDINACION / MONITOR GLOBAL  /coordinacion/monitor
+-----------------------------------------------------------------------
+[ ] Ver el monitor global de todas las comisiones
+
+COORDINACION / ENCUENTROS  /coordinacion/encuentros
+[ ] Ver lista de encuentros / clases
+
+COORDINACION / COLOQUIOS  /coordinacion/coloquios
+[ ] Ver lista de coloquios registrados
+
+-----------------------------------------------------------------------
+SWAGGER (alternativa para testear el backend directo)
+-----------------------------------------------------------------------
+    http://localhost:8000/docs
+
+1. POST /api/auth/login con:
+   Header: X-Tenant-Id: 00000000-0000-0000-0000-000000000001
+   Body: { "email": "admin@demo.edu", "password": "Demo1234!" }
+2. Copiar el access_token de la respuesta
+3. Click en el candado (arriba a la derecha) → pegar "Bearer <token>"
+4. Ya podés llamar cualquier endpoint autenticado
+
+Endpoints utiles para explorar:
+   GET  /api/usuarios           — lista de usuarios del tenant
+   GET  /api/carreras           — carreras
+   GET  /api/materias           — materias
+   GET  /api/cohortes           — cohortes
+   GET  /api/avisos             — avisos vigentes
+   GET  /api/equipos            — asignaciones docentes
+   GET  /api/auditoria/log      — log de auditoría
+   GET  /api/auditoria/panel    — métricas de auditoría
+
+-----------------------------------------------------------------------
+LOGOUT
+-----------------------------------------------------------------------
+[ ] Click en el menu de usuario (esquina superior derecha) → Cerrar sesión
+[ ] Debe redirigir a /login
