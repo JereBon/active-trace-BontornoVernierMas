@@ -1,11 +1,12 @@
 // features/coordinacion/components/coloquios/TablaColoquios.tsx
+// Aligned with backend EvaluacionOut schema
 import { useColoquios } from '../../hooks/useColoquios'
-import type { ColoquioEstado } from '../../types'
+import type { EstadoEvaluacion } from '../../types'
 
-const ESTADO_CLASS: Record<ColoquioEstado, string> = {
-  abierta: 'bg-green-100 text-green-800',
-  cerrada: 'bg-gray-100 text-gray-700',
-  cancelada: 'bg-red-100 text-red-700',
+const ESTADO_CLASS: Record<EstadoEvaluacion, string> = {
+  Abierta: 'bg-green-100 text-green-800',
+  Cerrada: 'bg-gray-100 text-gray-700',
+  Cancelada: 'bg-red-100 text-red-700',
 }
 
 export function TablaColoquios() {
@@ -22,26 +23,28 @@ export function TablaColoquios() {
       <thead className="bg-gray-50">
         <tr>
           <th className="px-4 py-2 text-left font-medium text-gray-600">Materia</th>
-          <th className="px-4 py-2 text-left font-medium text-gray-600">Fecha</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Cohorte</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Tipo</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Instancia</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Días</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Cupos</th>
           <th className="px-4 py-2 text-left font-medium text-gray-600">Estado</th>
-          <th className="px-4 py-2 text-left font-medium text-gray-600">Descripción</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
         {coloquios.map((c) => (
           <tr key={c.id} className="hover:bg-gray-50">
-            <td className="px-4 py-2 text-gray-900">{c.materia_nombre ?? c.materia_id}</td>
-            <td className="px-4 py-2 text-gray-600">
-              {new Date(c.fecha).toLocaleDateString('es-AR')}
-            </td>
+            <td className="px-4 py-2 text-gray-900 font-mono text-xs">{c.materia_id.slice(0, 8)}…</td>
+            <td className="px-4 py-2 text-gray-600 font-mono text-xs">{c.cohorte_id.slice(0, 8)}…</td>
+            <td className="px-4 py-2 text-gray-600">{c.tipo}</td>
+            <td className="px-4 py-2 text-gray-900 font-medium">{c.instancia}</td>
+            <td className="px-4 py-2 text-gray-600">{c.dias_disponibles}</td>
+            <td className="px-4 py-2 text-gray-600">{c.cupos_disponibles}</td>
             <td className="px-4 py-2">
-              <span
-                className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_CLASS[c.estado]}`}
-              >
+              <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${ESTADO_CLASS[c.estado as EstadoEvaluacion] ?? ''}`}>
                 {c.estado}
               </span>
             </td>
-            <td className="px-4 py-2 text-gray-600">{c.descripcion ?? '—'}</td>
           </tr>
         ))}
       </tbody>

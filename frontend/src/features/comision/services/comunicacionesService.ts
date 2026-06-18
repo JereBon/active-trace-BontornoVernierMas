@@ -40,8 +40,47 @@ export async function encolarComunicaciones(body: EncolarBody): Promise<EncolarR
   return data
 }
 
+/** POST /v1/comunicaciones/encolar-desde-padron — resolve emails server-side */
+export async function encolarDesdePadron(body: {
+  materia_id: string
+  entrada_padron_ids: string[]
+  asunto: string
+  cuerpo: string
+}): Promise<EncolarResponse> {
+  const { data } = await api.post<EncolarResponse>('/v1/comunicaciones/encolar-desde-padron', body)
+  return data
+}
+
 /** GET /v1/comunicaciones/lotes/{loteId} — poll lote status */
 export async function getLoteStatus(loteId: string): Promise<LoteStatus> {
   const { data } = await api.get<LoteStatus>(`/v1/comunicaciones/lotes/${loteId}`)
   return data
+}
+
+export interface LoteResumen {
+  lote_id: string
+  created_at: string
+  total: number
+  pendientes: number
+  enviados: number
+  errores: number
+  aprobado: boolean
+}
+
+/** GET /v1/comunicaciones/lotes?materia_id= — list recent lotes */
+export async function getLotesMateria(materiaId: string): Promise<LoteResumen[]> {
+  const { data } = await api.get<LoteResumen[]>('/v1/comunicaciones/lotes', {
+    params: { materia_id: materiaId },
+  })
+  return data
+}
+
+/** PATCH /v1/comunicaciones/lotes/{loteId}/aprobar */
+export async function aprobarLote(loteId: string): Promise<void> {
+  await api.patch(`/v1/comunicaciones/lotes/${loteId}/aprobar`)
+}
+
+/** PATCH /v1/comunicaciones/lotes/{loteId}/cancelar */
+export async function cancelarLote(loteId: string): Promise<void> {
+  await api.patch(`/v1/comunicaciones/lotes/${loteId}/cancelar`)
 }

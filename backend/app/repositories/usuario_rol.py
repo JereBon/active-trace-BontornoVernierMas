@@ -10,6 +10,7 @@ from datetime import date
 
 from sqlalchemy import select, and_, or_
 
+from app.models.rol import Rol
 from app.models.usuario_rol import UsuarioRol
 from app.models.rol_permiso import RolPermiso
 from app.models.permiso import Permiso
@@ -54,3 +55,28 @@ class UsuarioRolRepository(BaseRepository[UsuarioRol]):
 
         result = await self._session.execute(stmt)
         return set(result.scalars().all())
+
+    async def get_roles_efectivos(self, usuario_id: uuid.UUID) -> list[str]:
+        """Return the list of role codes (e.g. 'ADMIN', 'COORDINADOR') active today."""
+        today = date.today()
+
+        stmt = (
+            select(Rol.codigo)
+            .join(UsuarioRol, UsuarioRol.rol_id == Rol.id)
+            .where(
+                UsuarioRol.usuario_id == usuario_id,
+                UsuarioRol.tenant_id == self._tenant_id,
+                UsuarioRol.deleted_at.is_(None),
+                UsuarioRol.vig_desde <= today,
+                or_(
+                    UsuarioRol.vig_hasta.is_(None),
+                    UsuarioRol.vig_hasta >= today,
+                ),
+                Rol.tenant_id == self._tenant_id,
+                Rol.deleted_at.is_(None),
+            )
+            .distinct()
+        )
+
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())

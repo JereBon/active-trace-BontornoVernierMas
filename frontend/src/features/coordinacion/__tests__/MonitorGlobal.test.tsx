@@ -69,7 +69,7 @@ describe('MonitorGlobalPanel', () => {
 
     await screen.findByText(/García/i)
 
-    const comisionInput = screen.getByPlaceholderText(/filtrar comisión/i)
+    const comisionInput = screen.getByPlaceholderText(/comisión/i)
     fireEvent.change(comisionInput, { target: { value: 'B' } })
 
     await waitFor(() => {

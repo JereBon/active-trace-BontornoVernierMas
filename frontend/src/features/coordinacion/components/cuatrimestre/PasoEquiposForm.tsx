@@ -1,52 +1,146 @@
-// features/coordinacion/components/cuatrimestre/PasoEquiposForm.tsx
 import { useState } from 'react'
-import { useEquipos } from '../../hooks/useEquipos'
+import { useQuery } from '@tanstack/react-query'
+import { getUsuarios } from '../../services/equiposService'
+import type { Materia } from '../../../admin/types'
+import type { AsignacionCuatrimestre, RolAsignacion } from '../../types'
 
 interface Props {
-  materias: string[]
-  onNext: (asignaciones: Record<string, string>) => void
+  materias: Materia[]
+  onNext: (asignaciones: AsignacionCuatrimestre[]) => void
   onBack: () => void
 }
 
 export function PasoEquiposForm({ materias, onNext, onBack }: Props) {
-  const { data: equipos = [] } = useEquipos()
-  const [asignaciones, setAsignaciones] = useState<Record<string, string>>({})
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: getUsuarios,
+  })
 
-  const handleChange = (materiaId: string, equipoId: string) => {
-    setAsignaciones((prev) => ({ ...prev, [materiaId]: equipoId }))
+  const [asignaciones, setAsignaciones] = useState<
+    Record<string, { usuario_id: string; rol: RolAsignacion; desde: string; hasta: string }>
+  >({})
+
+  const updateAsignacion = (
+    materiaId: string,
+    field: string,
+    value: string,
+  ) => {
+    setAsignaciones((prev) => ({
+      ...prev,
+      [materiaId]: {
+        usuario_id: '',
+        rol: 'PROFESOR',
+        desde: new Date().toISOString().slice(0, 10),
+        hasta: '',
+        ...prev[materiaId],
+        [field]: value,
+      },
+    }))
   }
 
   const handleNext = () => {
-    onNext(asignaciones)
+    const result: AsignacionCuatrimestre[] = materias
+      .filter((m) => asignaciones[m.id]?.usuario_id)
+      .map((m) => ({
+        materia_id: m.id,
+        usuario_id: asignaciones[m.id].usuario_id,
+        rol: asignaciones[m.id].rol,
+        desde: asignaciones[m.id].desde,
+        hasta: asignaciones[m.id].hasta || null,
+      }))
+    onNext(result)
   }
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-800">Paso 2: Asignación de Equipos</h3>
+      <h3 className="text-lg font-semibold text-gray-800">
+        Paso 2: Asignación Docente
+      </h3>
 
       {materias.length === 0 ? (
         <p className="text-gray-400 text-sm">No hay materias seleccionadas.</p>
       ) : (
-        <div className="space-y-3">
-          {materias.map((materiaId) => (
-            <div key={materiaId} className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-700 w-32 truncate">
-                {materiaId}
-              </span>
-              <select
-                value={asignaciones[materiaId] ?? ''}
-                onChange={(e) => handleChange(materiaId, e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1 text-sm flex-1"
+        <div className="space-y-4">
+          {materias.map((m) => {
+            const val = asignaciones[m.id] ?? {}
+            return (
+              <div
+                key={m.id}
+                className="border border-gray-200 rounded p-4 space-y-3"
               >
-                <option value="">Sin equipo</option>
-                {equipos.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
+                <p className="text-sm font-semibold text-gray-800">
+                  {m.nombre} <span className="text-gray-400">({m.codigo})</span>
+                </p>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Docente
+                    </label>
+                    <select
+                      value={val.usuario_id ?? ''}
+                      onChange={(e) =>
+                        updateAsignacion(m.id, 'usuario_id', e.target.value)
+                      }
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {usuarios.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nombre} {u.apellidos ?? ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Rol
+                    </label>
+                    <select
+                      value={val.rol ?? 'PROFESOR'}
+                      onChange={(e) =>
+                        updateAsignacion(m.id, 'rol', e.target.value)
+                      }
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                    >
+                      <option value="PROFESOR">PROFESOR</option>
+                      <option value="TUTOR">TUTOR</option>
+                      <option value="COORDINADOR">COORDINADOR</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Vigente desde
+                    </label>
+                    <input
+                      type="date"
+                      value={val.desde ?? ''}
+                      onChange={(e) =>
+                        updateAsignacion(m.id, 'desde', e.target.value)
+                      }
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Vigente hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={val.hasta ?? ''}
+                      onChange={(e) =>
+                        updateAsignacion(m.id, 'hasta', e.target.value)
+                      }
+                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -59,7 +153,11 @@ export function PasoEquiposForm({ materias, onNext, onBack }: Props) {
         </button>
         <button
           onClick={handleNext}
-          className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+          disabled={
+            materias.length === 0 ||
+            materias.every((m) => !asignaciones[m.id]?.usuario_id)
+          }
+          className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
         >
           Siguiente
         </button>

@@ -149,10 +149,17 @@ class CalificacionService:
             return []
 
         # Step 3: Resolve emails to EntradaPadron IDs
-        # Get all active EntradaPadron for this tenant × materia
-        stmt = select(EntradaPadron).where(
-            EntradaPadron.tenant_id == self._tenant_id,
-            EntradaPadron.deleted_at.is_(None),
+        # Get active EntradaPadron for this tenant × materia (active version only)
+        from app.models.version_padron import VersionPadron  # noqa: PLC0415
+        stmt = (
+            select(EntradaPadron)
+            .join(VersionPadron, EntradaPadron.version_id == VersionPadron.id)
+            .where(
+                EntradaPadron.tenant_id == self._tenant_id,
+                EntradaPadron.deleted_at.is_(None),
+                VersionPadron.materia_id == materia_id,
+                VersionPadron.activa.is_(True),
+            )
         )
         result = await self._session.execute(stmt)
         all_entradas = list(result.scalars().all())

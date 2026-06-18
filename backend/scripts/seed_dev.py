@@ -24,6 +24,12 @@ UA  = uuid.UUID("00000000-0000-0000-0000-000000000100")   # admin
 UC  = uuid.UUID("00000000-0000-0000-0000-000000000101")   # coord
 UP  = uuid.UUID("00000000-0000-0000-0000-000000000102")   # profesor
 UT  = uuid.UUID("00000000-0000-0000-0000-000000000103")   # tutor
+# asignacion IDs — deterministic so seed is idempotent
+ASG_AMP = uuid.UUID("00000000-0000-0000-0000-000000000200")  # admin → Prog I
+ASG_AMB = uuid.UUID("00000000-0000-0000-0000-000000000201")  # admin → BD
+ASG_UP  = uuid.UUID("00000000-0000-0000-0000-000000000202")  # profesor → Prog I
+ASG_UT  = uuid.UUID("00000000-0000-0000-0000-000000000203")  # tutor → Prog I
+ASG_UC  = uuid.UUID("00000000-0000-0000-0000-000000000204")  # coord → BD
 
 NOW = datetime.now(timezone.utc)
 
@@ -40,6 +46,8 @@ ROLES_DEF = [
 PERMISOS_DEF = [
     ("academico:ver_propio",        "Ver propio perfil académico"),
     ("evaluaciones:reservar",       "Reservar evaluaciones"),
+    ("evaluaciones:gestionar",      "Gestionar evaluaciones/coloquios"),
+    ("evaluaciones:resultado",      "Registrar resultado de evaluaciones"),
     ("avisos:confirmar",            "Confirmar avisos"),
     ("avisos:publicar",             "Publicar avisos"),
     ("calificaciones:importar",     "Importar calificaciones"),
@@ -130,6 +138,8 @@ async def seed(eng):
                 "comunicacion:enviar","comunicacion:aprobar",
                 "equipos:asignar","encuentros:gestionar","guardias:registrar",
                 "avisos:publicar","avisos:confirmar","auditoria:ver",
+                "evaluaciones:gestionar","evaluaciones:resultado",
+                "tareas:gestionar",
             ],
             "PROFESOR": [
                 "estructura:gestionar","padron:leer","padron:cargar",
@@ -138,6 +148,8 @@ async def seed(eng):
                 "comunicacion:enviar","equipos:asignar",
                 "encuentros:gestionar","guardias:registrar",
                 "avisos:publicar","avisos:confirmar",
+                "evaluaciones:gestionar","evaluaciones:resultado",
+                "tareas:gestionar",
             ],
             "TUTOR": [
                 "padron:leer","atrasados:ver",
@@ -214,17 +226,19 @@ async def seed(eng):
 
         # 7. Asignaciones docentes
         print("→ Asignaciones...")
-        for uid_, mid, cid, rol in [
-            (UP, MP, C25, "PROFESOR"),
-            (UT, MP, C25, "TUTOR"),
-            (UC, MB, C25, "COORDINADOR"),
+        for asg_id, uid_, mid, cid, rol in [
+            (ASG_AMP, UA, MP, C25, "ADMIN"),
+            (ASG_AMB, UA, MB, C25, "ADMIN"),
+            (ASG_UP,  UP, MP, C25, "PROFESOR"),
+            (ASG_UT,  UT, MP, C25, "TUTOR"),
+            (ASG_UC,  UC, MB, C25, "COORDINADOR"),
         ]:
             await c.execute(sa.text("""
                 INSERT INTO asignaciones
                   (id,tenant_id,usuario_id,rol,materia_id,carrera_id,cohorte_id,comisiones,desde,created_at,updated_at)
                 VALUES (:id,:tid,:uid,:rol,:mid,:car,:cid,'{}' ,:desde,:n,:n)
                 ON CONFLICT(id) DO NOTHING
-            """), dict(id=nid(), tid=T, uid=uid_, rol=rol,
+            """), dict(id=asg_id, tid=T, uid=uid_, rol=rol,
                        mid=mid, car=CAR, cid=cid,
                        desde=date(2025,3,1), n=NOW))
 

@@ -11,9 +11,10 @@ Cada institución es un **tenant aislado**. Todo audita.
 - [Stack tecnológico](#stack-tecnológico)
 - [Arquitectura](#arquitectura)
 - [Requisitos previos](#requisitos-previos)
-- [Configuración del entorno](#configuración-del-entorno)
-- [Ejecución con Docker (recomendado)](#ejecución-con-docker-recomendado)
-- [Ejecución en desarrollo local](#ejecución-en-desarrollo-local)
+- [Inicio rápido — paso a paso](#inicio-rápido--paso-a-paso)
+- [Reset completo](#reset-completo-empezar-de-cero)
+- [Comandos útiles de Docker](#comandos-útiles-de-docker)
+- [Ejecución local (sin Docker)](#ejecución-local-sin-docker)
 - [Migraciones de base de datos](#migraciones-de-base-de-datos)
 - [Testing](#testing)
 - [Estructura del proyecto](#estructura-del-proyecto)
@@ -109,87 +110,214 @@ El patrón de capas es **unidireccional y estricto**:
 ## Requisitos previos
 
 - [Docker](https://www.docker.com/) ≥ 24 y Docker Compose ≥ 2.20
-- [Node.js](https://nodejs.org/) ≥ 20 (solo para desarrollo frontend local)
-- [Python](https://www.python.org/) ≥ 3.13 (solo para desarrollo backend local)
-- [uv](https://github.com/astral-sh/uv) (gestor de paquetes Python, opcional para local)
+- [Node.js](https://nodejs.org/) ≥ 20 (para el frontend)
 
 ---
 
-## Configuración del entorno
+## Inicio rápido — paso a paso
 
-### 1. Clonar el repositorio
+> Seguí estos pasos **en orden**. Saltear alguno es la causa más frecuente de errores.
+
+### Paso 1 — Clonar el repositorio
 
 ```bash
 git clone https://github.com/JereBon/active-trace-BontornoVernierMas.git
 cd active-trace-BontornoVernierMas
 ```
 
-### 2. Crear el archivo de entorno del backend
+---
 
-```bash
-cp backend/.env.example backend/.env
-```
+### Paso 2 — Crear `backend/.env`
 
-Editar `backend/.env` con los valores reales (ver [Variables de entorno](#variables-de-entorno)).
-
-Los valores mínimos para desarrollo local:
+El backend no arranca sin este archivo. Crealo con el siguiente contenido (copiá y pegá):
 
 ```env
-DATABASE_URL=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace
+# backend/.env
+
+DATABASE_URL=postgresql+asyncpg://activia:changeme@postgres:5432/activia_trace
 DATABASE_URL_TEST=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace_test
-SECRET_KEY=una-clave-secreta-de-al-menos-32-caracteres-aqui
+SECRET_KEY=dev-secret-key-minimo-32-caracteres-aqui-ok
 ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+OTEL_ENABLED=false
 ```
 
-> **`ENCRYPTION_KEY`** debe ser exactamente 64 caracteres hexadecimales (= 32 bytes para AES-256-GCM).
-> Generá una clave segura con: `python -c "import secrets; print(secrets.token_hex(32))"`
+> **Importante:**
+> - `DATABASE_URL` usa `@postgres:5432` (nombre del servicio Docker). Si corrés el backend fuera de Docker, cambialo a `@localhost:5432`.
+> - `ENCRYPTION_KEY` debe tener **exactamente 64 caracteres hex** (32 bytes para AES-256). La de arriba es válida para desarrollo.
+> - `SECRET_KEY` debe tener **mínimo 32 caracteres**.
 
 ---
 
-## Ejecución con Docker (recomendado)
+### Paso 3 — Crear `frontend/.env`
 
-Levanta los tres servicios (PostgreSQL, API, Worker) en un solo comando:
+Sin este archivo el frontend no puede comunicarse con el backend (todas las requests dan 404).
 
-```bash
-docker-compose up --build
+Creá el archivo `frontend/.env` con este contenido:
+
+```env
+# frontend/.env
+VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Servicios disponibles:
+---
 
-| Servicio | URL |
-|---|---|
-| API REST | http://localhost:8000 |
-| Docs interactivos (Swagger) | http://localhost:8000/docs |
-| Docs alternativos (ReDoc) | http://localhost:8000/redoc |
-| Health check | http://localhost:8000/health |
-| PostgreSQL | localhost:5432 |
-
-### Comandos útiles
+### Paso 4 — Levantar el backend con Docker
 
 ```bash
-# Levantar en background
-docker-compose up -d
+docker-compose up --build -d
+```
 
+Esto levanta tres servicios: `postgres`, `api` (FastAPI en puerto 8000) y `worker`.
+
+Verificá que estén corriendo:
+
+```bash
+docker-compose ps
+```
+
+Todos deben aparecer como `running`. Si `api` aparece como `restarting`, revisá los logs:
+
+```bash
+docker-compose logs api --tail=30
+```
+
+---
+
+### Paso 5 — Correr las migraciones de base de datos
+
+**Las migraciones NO se corren automáticamente.** Hay que ejecutarlas a mano la primera vez (y cada vez que se actualice el código con nuevas migraciones):
+
+```bash
+docker-compose exec api sh -c "python -m alembic upgrade head"
+```
+
+Deberías ver una salida similar a:
+
+```
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001, Create tenants table
+INFO  [alembic.runtime.migration] Running upgrade 0001 -> 0002, Create usuario auth tables
+...
+INFO  [alembic.runtime.migration] Running upgrade 0016 -> 0017, Create liquidaciones tables
+```
+
+> **¿Por qué `python -m alembic` y no `alembic` directamente?**
+> El binario `alembic` dentro del contenedor tiene el shebang apuntando a la ruta del stage `builder` del Dockerfile, que no existe en el stage `runtime`. Usar `python -m alembic` evita ese problema.
+
+---
+
+### Paso 6 — Cargar los datos de desarrollo (seed)
+
+Sin este paso la base de datos está vacía: no hay tenant, no hay usuarios, no podés hacer login.
+
+```bash
+docker-compose exec api sh -c "python scripts/seed_dev.py"
+```
+
+El script crea:
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| ADMIN | admin@demo.edu | Demo1234! |
+| COORDINADOR | coordinador@demo.edu | Demo1234! |
+| PROFESOR | profesor@demo.edu | Demo1234! |
+| TUTOR | tutor@demo.edu | Demo1234! |
+
+También crea el tenant "Universidad Demo", una carrera, dos materias y dos cohortes.
+
+> El seed usa `ON CONFLICT DO NOTHING`, así que podés correrlo más de una vez sin problema.
+
+---
+
+### Paso 7 — Levantar el frontend
+
+En una terminal separada:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+El frontend queda disponible en **http://localhost:5173**
+
+---
+
+### Verificación final
+
+| URL | Qué esperar |
+|---|---|
+| http://localhost:8000/health | `{"status":"ok"}` |
+| http://localhost:8000/docs | Swagger UI con todos los endpoints |
+| http://localhost:5173 | Pantalla de login |
+
+Entrá con `admin@demo.edu` / `Demo1234!` — deberías ver el menú completo con Dashboard, Comisión, Coordinación, Finanzas y Administración.
+
+---
+
+## Reset completo (empezar de cero)
+
+Si algo salió mal y querés resetear todo:
+
+```bash
+# 1. Bajar contenedores Y borrar el volumen de PostgreSQL
+docker-compose down -v
+
+# 2. Reconstruir y levantar
+docker-compose up --build -d
+
+# 3. Correr migraciones
+docker-compose exec api sh -c "python -m alembic upgrade head"
+
+# 4. Cargar seed
+docker-compose exec api sh -c "python scripts/seed_dev.py"
+```
+
+---
+
+## Comandos útiles de Docker
+
+```bash
 # Ver logs en tiempo real
 docker-compose logs -f api
 docker-compose logs -f worker
 
-# Bajar y eliminar volúmenes (reset completo de DB)
-docker-compose down -v
+# Ver el estado actual de las migraciones
+docker-compose exec api sh -c "python -m alembic current"
 
-# Ejecutar migraciones manualmente dentro del contenedor
-docker-compose exec api alembic upgrade head
-
-# Acceder a la DB con psql
+# Acceder a la base de datos con psql
 docker-compose exec postgres psql -U activia -d activia_trace
+
+# Reconstruir solo el backend (después de cambios de código)
+docker-compose build api
+docker-compose up -d api
 ```
 
-### Aplicar migraciones (primera vez)
+---
 
-Las migraciones se aplican automáticamente al iniciar el contenedor `api`. Si necesitás correrlas manualmente:
+## Ejecución local (sin Docker)
+
+### Backend
 
 ```bash
-docker-compose exec api alembic upgrade head
+cd backend
+
+# Instalar dependencias
+pip install -e ".[dev]"
+
+# Aplicar migraciones (requiere PostgreSQL corriendo en localhost:5432)
+alembic upgrade head
+
+# Levantar servidor de desarrollo
+uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ---
@@ -238,7 +366,7 @@ npm run dev
 
 Disponible en: **http://localhost:5173**
 
-> El frontend apunta al backend en `http://localhost:8000` por defecto. Ajustar en `frontend/src/shared/services/api.ts` si el puerto difiere.
+> La URL del backend se configura en `frontend/.env` con la variable `VITE_API_BASE_URL`. Ver [Paso 3](#paso-3--crear-frontendenv).
 
 ---
 
@@ -248,20 +376,22 @@ El proyecto usa **Alembic** con una migración por cada cambio de schema.
 
 ```bash
 # Ver el estado actual
-alembic current
+docker-compose exec api sh -c "python -m alembic current"
 
 # Ver el historial completo
-alembic history --verbose
+docker-compose exec api sh -c "python -m alembic history --verbose"
 
 # Aplicar todas las migraciones pendientes
-alembic upgrade head
+docker-compose exec api sh -c "python -m alembic upgrade head"
 
 # Revertir la última migración
-alembic downgrade -1
+docker-compose exec api sh -c "python -m alembic downgrade -1"
 
-# Revertir todo
-alembic downgrade base
+# Revertir todo (borra todas las tablas)
+docker-compose exec api sh -c "python -m alembic downgrade base"
 ```
+
+> Si estás trabajando fuera de Docker (backend local con `uvicorn`), podés usar `alembic` directamente desde `backend/`.
 
 ### Historial de migraciones
 
@@ -451,30 +581,32 @@ Los permisos efectivos se resuelven server-side por request (unión de roles × 
 
 ## Variables de entorno
 
-Crear `backend/.env` basándose en:
+### `backend/.env`
 
 ```env
-# ── Base de datos ────────────────────────────────────────────────────────────
-DATABASE_URL=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace
+# Con Docker Compose (host = nombre del servicio)
+DATABASE_URL=postgresql+asyncpg://activia:changeme@postgres:5432/activia_trace
 DATABASE_URL_TEST=postgresql+asyncpg://activia:changeme@localhost:5432/activia_trace_test
 
-# ── Seguridad ────────────────────────────────────────────────────────────────
-# Mínimo 32 caracteres. Generá con: python -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY=cambia-esto-por-una-clave-segura-de-minimo-32-caracteres
+# Mínimo 32 caracteres
+SECRET_KEY=dev-secret-key-minimo-32-caracteres-aqui-ok
 
-# Exactamente 64 hex chars (32 bytes AES-256). Generá con: python -c "import secrets; print(secrets.token_hex(32))"
-ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+# Exactamente 64 hex chars (32 bytes AES-256-GCM)
+ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
-# Minutos de vida del access token (default: 15)
 ACCESS_TOKEN_EXPIRE_MINUTES=15
-
-# ── Observabilidad (opcional) ────────────────────────────────────────────────
 OTEL_ENABLED=false
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 OTEL_SERVICE_NAME=activia-trace-api
 ```
 
-> **Nunca commitear `.env` con valores reales.** El archivo `.env.example` es la referencia segura.
+### `frontend/.env`
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+> **Nunca commitear `.env` con credenciales reales de producción.**
 
 ---
 

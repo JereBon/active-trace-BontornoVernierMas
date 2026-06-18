@@ -3,7 +3,7 @@ import { Navbar } from '@/shared/components/Navbar'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
 const COORDINACION_ROLES = ['COORDINADOR', 'ADMIN']
-const FINANZAS_ROLES = ['FINANZAS', 'ADMIN']
+const FINANZAS_ROLES = ['FINANZAS']
 const ADMIN_ROLES = ['ADMIN']
 
 export function AppShell() {
@@ -43,7 +43,7 @@ export function AppShell() {
             </NavLink>
 
             <NavLink
-              to="/comision/placeholder/monitor"
+              to="/comision"
               className={({ isActive }) =>
                 [
                   'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',

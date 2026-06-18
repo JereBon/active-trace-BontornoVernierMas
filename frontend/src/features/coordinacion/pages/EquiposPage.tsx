@@ -1,23 +1,31 @@
-// features/coordinacion/pages/EquiposPage.tsx
 import { useState } from 'react'
 import { TablaEquipos } from '../components/equipos/TablaEquipos'
 import { EquipoForm } from '../components/equipos/EquipoForm'
-import { useCreateEquipo, useUpdateEquipo, useEquipos } from '../hooks/useEquipos'
-import { exportToCsv } from '@/shared/utils/exportCsv'
-import type { EquipoDocente, EquipoDocenteCreate } from '../types'
+import { AsignacionMasivaModal } from '../components/equipos/AsignacionMasivaModal'
+import { ClonarEquipoModal } from '../components/equipos/ClonarEquipoModal'
+import { VigenciaMasivaModal } from '../components/equipos/VigenciaMasivaModal'
+import { useCreateEquipo, useUpdateEquipo, useAsignacionMasiva, useClonarEquipo, useVigenciaMasiva } from '../hooks/useEquipos'
+import type { Asignacion, AsignacionCreate } from '../types'
 
 export function EquiposPage() {
   const [showForm, setShowForm] = useState(false)
-  const [editingEquipo, setEditingEquipo] = useState<EquipoDocente | null>(null)
+  const [editingAsignacion, setEditingAsignacion] = useState<Asignacion | null>(null)
+  const [showMasiva, setShowMasiva] = useState(false)
+  const [showClonar, setShowClonar] = useState(false)
+  const [showVigencia, setShowVigencia] = useState(false)
+
   const createEquipo = useCreateEquipo()
   const updateEquipo = useUpdateEquipo()
-  const { data: equipos = [] } = useEquipos()
+  const masiva = useAsignacionMasiva()
+  const clonar = useClonarEquipo()
+  const vigencia = useVigenciaMasiva()
 
-  const handleSubmit = (data: EquipoDocenteCreate) => {
-    if (editingEquipo) {
+  const handleSubmit = (data: AsignacionCreate) => {
+    if (editingAsignacion) {
+      const { usuario_id: _uid, ...updatePayload } = data
       updateEquipo.mutate(
-        { id: editingEquipo.id, payload: data },
-        { onSuccess: () => { setShowForm(false); setEditingEquipo(null) } },
+        { id: editingAsignacion.id, payload: updatePayload },
+        { onSuccess: () => { setShowForm(false); setEditingAsignacion(null) } },
       )
     } else {
       createEquipo.mutate(data, {
@@ -26,20 +34,9 @@ export function EquiposPage() {
     }
   }
 
-  const handleEdit = (equipo: EquipoDocente) => {
-    setEditingEquipo(equipo)
+  const handleEdit = (asignacion: Asignacion) => {
+    setEditingAsignacion(asignacion)
     setShowForm(true)
-  }
-
-  const handleExport = () => {
-    const rows = equipos.map((eq) => ({
-      nombre: eq.nombre,
-      descripcion: eq.descripcion ?? '',
-      vigencia_desde: eq.vigencia_desde ?? '',
-      vigencia_hasta: eq.vigencia_hasta ?? '',
-      integrantes: eq.integrantes.length,
-    }))
-    exportToCsv(rows, 'equipos-docentes')
   }
 
   return (
@@ -47,17 +44,20 @@ export function EquiposPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800">Equipos Docentes</h2>
         <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
-          >
-            Exportar CSV
+          <button onClick={() => setShowVigencia(true)} className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">
+            Modificar Vigencia
+          </button>
+          <button onClick={() => setShowClonar(true)} className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">
+            Clonar Equipo
+          </button>
+          <button onClick={() => { setShowMasiva(true); setShowForm(false) }} className="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded hover:bg-blue-50">
+            Asignación Masiva
           </button>
           <button
-            onClick={() => { setEditingEquipo(null); setShowForm(true) }}
+            onClick={() => { setEditingAsignacion(null); setShowForm(true); setShowMasiva(false); setShowClonar(false); setShowVigencia(false) }}
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Nuevo Equipo
+            Nueva Asignación
           </button>
         </div>
       </div>
@@ -65,15 +65,39 @@ export function EquiposPage() {
       {showForm && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {editingEquipo ? 'Editar Equipo' : 'Nuevo Equipo'}
+            {editingAsignacion ? 'Editar Asignación' : 'Nueva Asignación'}
           </h3>
           <EquipoForm
-            defaultValues={editingEquipo ?? undefined}
+            defaultValues={editingAsignacion ?? undefined}
             onSubmit={handleSubmit}
-            onCancel={() => { setShowForm(false); setEditingEquipo(null) }}
+            onCancel={() => { setShowForm(false); setEditingAsignacion(null) }}
             isLoading={createEquipo.isPending || updateEquipo.isPending}
           />
         </div>
+      )}
+
+      {showMasiva && (
+        <AsignacionMasivaModal
+          onSubmit={(data) => masiva.mutate(data, { onSuccess: () => setShowMasiva(false) })}
+          onCancel={() => setShowMasiva(false)}
+          isLoading={masiva.isPending}
+        />
+      )}
+
+      {showClonar && (
+        <ClonarEquipoModal
+          onSubmit={(data) => clonar.mutate(data, { onSuccess: () => setShowClonar(false) })}
+          onCancel={() => setShowClonar(false)}
+          isLoading={clonar.isPending}
+        />
+      )}
+
+      {showVigencia && (
+        <VigenciaMasivaModal
+          onSubmit={(data) => vigencia.mutate(data, { onSuccess: () => setShowVigencia(false) })}
+          onCancel={() => setShowVigencia(false)}
+          isLoading={vigencia.isPending}
+        />
       )}
 
       <div className="bg-white border border-gray-200 rounded-lg p-4">

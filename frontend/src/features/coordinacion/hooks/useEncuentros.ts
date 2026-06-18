@@ -1,18 +1,27 @@
 // features/coordinacion/hooks/useEncuentros.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createEncuentro, getEncuentros } from '../services/encuentrosService'
-import type { EncuentroCreate } from '../types'
+import { createSlot, getEncuentros, updateInstancia } from '../services/encuentrosService'
+import type { InstanciaUpdate, SlotCreate } from '../types'
 
-const QUERY_KEY = ['encuentros']
+const QUERY_KEY = ['encuentros-admin']
 
 export function useEncuentros() {
   return useQuery({ queryKey: QUERY_KEY, queryFn: getEncuentros })
 }
 
-export function useCreateEncuentro() {
+export function useCreateSlot() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: EncuentroCreate) => createEncuentro(payload),
+    mutationFn: (payload: SlotCreate) => createSlot(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  })
+}
+
+export function useUpdateInstancia() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: InstanciaUpdate }) =>
+      updateInstancia(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   })
 }

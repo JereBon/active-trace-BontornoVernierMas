@@ -1,9 +1,11 @@
-// features/coordinacion/pages/TareasPage.tsx
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { TablaTareas } from '../components/tareas/TablaTareas'
 import { HiloComentarios } from '../components/tareas/HiloComentarios'
 import { TareaEstadoSelector } from '../components/tareas/TareaEstadoSelector'
 import { useCreateTarea, useUpdateTarea } from '../hooks/useTareas'
+import { getUsuarios } from '../services/equiposService'
+import { getMaterias } from '@/features/admin/services/estructuraService'
 import type { Tarea, TareaCreate, TareaEstado } from '../types'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,6 +15,8 @@ const tareaSchema = z.object({
   titulo: z.string().min(1, 'El título es requerido'),
   descripcion: z.string().nullable().optional(),
   prioridad: z.enum(['baja', 'media', 'alta']),
+  asignado_a: z.string().uuid().nullable().optional().or(z.literal('')),
+  materia_id: z.string().uuid().nullable().optional().or(z.literal('')),
 })
 
 type TareaFormValues = z.infer<typeof tareaSchema>
@@ -22,10 +26,12 @@ export function TareasPage() {
   const [selectedTarea, setSelectedTarea] = useState<Tarea | null>(null)
   const createTarea = useCreateTarea()
   const updateTarea = useUpdateTarea()
+  const { data: usuarios = [] } = useQuery({ queryKey: ['usuarios'], queryFn: getUsuarios })
+  const { data: materias = [] } = useQuery({ queryKey: ['materias'], queryFn: getMaterias })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<TareaFormValues>({
     resolver: zodResolver(tareaSchema),
-    defaultValues: { titulo: '', descripcion: null, prioridad: 'media' },
+    defaultValues: { titulo: '', descripcion: null, prioridad: 'media', asignado_a: '', materia_id: '' },
   })
 
   const onSubmit = (data: TareaFormValues) => {
@@ -33,6 +39,8 @@ export function TareasPage() {
       titulo: data.titulo,
       descripcion: data.descripcion ?? null,
       prioridad: data.prioridad,
+      asignado_a: data.asignado_a || null,
+      materia_id: data.materia_id || null,
     }
     createTarea.mutate(payload, {
       onSuccess: () => { setShowForm(false); reset() },
@@ -74,20 +82,66 @@ export function TareasPage() {
               />
               {errors.titulo && <p className="text-red-600 text-xs mt-1">{errors.titulo.message}</p>}
             </div>
+
             <div>
-              <label htmlFor="prioridad-tarea" className="block text-sm font-medium text-gray-700 mb-1">
-                Prioridad
+              <label htmlFor="descripcion-tarea" className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción (opcional)
               </label>
-              <select
-                id="prioridad-tarea"
-                {...register('prioridad')}
-                className="border border-gray-300 rounded px-2 py-1 text-sm"
-              >
-                <option value="baja">Baja</option>
-                <option value="media">Media</option>
-                <option value="alta">Alta</option>
-              </select>
+              <textarea
+                id="descripcion-tarea"
+                {...register('descripcion')}
+                rows={2}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
             </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="prioridad-tarea" className="block text-sm font-medium text-gray-700 mb-1">
+                  Prioridad
+                </label>
+                <select
+                  id="prioridad-tarea"
+                  {...register('prioridad')}
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                >
+                  <option value="baja">Baja</option>
+                  <option value="media">Media</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="materia-tarea" className="block text-sm font-medium text-gray-700 mb-1">
+                  Materia
+                </label>
+                <select
+                  id="materia-tarea"
+                  {...register('materia_id')}
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                >
+                  <option value="">Sin materia</option>
+                  {materias.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="asignado_a" className="block text-sm font-medium text-gray-700 mb-1">
+                  Asignar a
+                </label>
+                <select
+                  id="asignado_a"
+                  {...register('asignado_a')}
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                >
+                  <option value="">Sin asignar</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}{u.apellidos ? ' ' + u.apellidos : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-3">
               <button
                 type="button"
@@ -101,7 +155,7 @@ export function TareasPage() {
                 disabled={createTarea.isPending}
                 className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
               >
-                Crear
+                {createTarea.isPending ? 'Creando…' : 'Crear'}
               </button>
             </div>
           </form>

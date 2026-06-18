@@ -12,3 +12,8 @@ export async function refreshApi(refreshToken: string): Promise<RefreshResponse>
   })
   return data
 }
+
+export async function getMeApi(): Promise<User> {
+  const { data } = await api.get<User>('/api/auth/me')
+  return data
+}

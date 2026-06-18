@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Spinner } from '@/shared/components/Spinner'
 import { configurarUmbral } from '../services/calificacionesService'
 import type { UmbralResponse } from '../types'
@@ -26,6 +26,9 @@ interface Props {
 }
 
 export function UmbralForm({ materiaId, asignacionId, onGuardado }: Props) {
+  const noAsignacion = !asignacionId
+  const queryClient = useQueryClient()
+
   const {
     register,
     handleSubmit,
@@ -44,11 +47,28 @@ export function UmbralForm({ materiaId, asignacionId, onGuardado }: Props) {
           ? values.valores_aprobatorios.split(',').map((v) => v.trim()).filter(Boolean)
           : [],
       }),
-    onSuccess: (data) => onGuardado?.(data),
+    onSuccess: (data) => {
+      // Invalidate all analysis queries so they refetch with recalculated aprobado
+      void queryClient.invalidateQueries({ queryKey: ['atrasados', materiaId] })
+      void queryClient.invalidateQueries({ queryKey: ['ranking', materiaId] })
+      void queryClient.invalidateQueries({ queryKey: ['notas-finales', materiaId] })
+      void queryClient.invalidateQueries({ queryKey: ['reporte-materia', materiaId] })
+      void queryClient.invalidateQueries({ queryKey: ['sin-corregir', materiaId] })
+      void queryClient.invalidateQueries({ queryKey: ['monitor'] })
+      onGuardado?.(data)
+    },
   })
 
   function onSubmit(values: FormValues) {
     mutation.mutate(values)
+  }
+
+  if (noAsignacion) {
+    return (
+      <p className="text-sm text-gray-400">
+        Seleccioná tu asignación docente (arriba) para configurar el umbral.
+      </p>
+    )
   }
 
   return (

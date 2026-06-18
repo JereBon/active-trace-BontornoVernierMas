@@ -1,8 +1,10 @@
-// features/coordinacion/components/cuatrimestre/ResumenCuatrimestre.tsx
+import type { Materia, Cohorte } from '../../../admin/types'
+import type { AsignacionCuatrimestre } from '../../types'
+
 interface Props {
-  materias: string[]
-  cohortes: string[]
-  asignaciones: Record<string, string>
+  materias: Materia[]
+  cohortes: Cohorte[]
+  asignaciones: AsignacionCuatrimestre[]
   onConfirm: () => void
   onBack: () => void
   isConfirming?: boolean
@@ -18,18 +20,22 @@ export function ResumenCuatrimestre({
 }: Props) {
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-800">Paso 3: Confirmar Configuración</h3>
+      <h3 className="text-lg font-semibold text-gray-800">
+        Paso 3: Confirmar Configuración
+      </h3>
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-4">
         <div>
-          <h4 className="text-sm font-semibold text-gray-600 mb-2">Materias seleccionadas</h4>
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">
+            Materias seleccionadas ({materias.length})
+          </h4>
           {materias.length === 0 ? (
             <p className="text-sm text-gray-400">Ninguna</p>
           ) : (
             <ul className="space-y-1">
               {materias.map((m) => (
-                <li key={m} className="text-sm text-gray-700">
-                  • {m} → Equipo: {asignaciones[m] ?? 'Sin asignar'}
+                <li key={m.id} className="text-sm text-gray-700">
+                  • {m.nombre} ({m.codigo})
                 </li>
               ))}
             </ul>
@@ -37,11 +43,41 @@ export function ResumenCuatrimestre({
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-gray-600 mb-2">Cohortes</h4>
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">
+            Cohortes ({cohortes.length})
+          </h4>
           {cohortes.length === 0 ? (
             <p className="text-sm text-gray-400">Ninguna</p>
           ) : (
-            <p className="text-sm text-gray-700">{cohortes.join(', ')}</p>
+            <ul className="space-y-1">
+              {cohortes.map((c) => (
+                <li key={c.id} className="text-sm text-gray-700">
+                  • {c.carrera_nombre ?? '—'} — Año {c.anio}
+                  {c.plan ? ` (${c.plan})` : ''}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold text-gray-600 mb-2">
+            Asignaciones docentes ({asignaciones.length})
+          </h4>
+          {asignaciones.length === 0 ? (
+            <p className="text-sm text-gray-400">Sin asignaciones</p>
+          ) : (
+            <ul className="space-y-1">
+              {asignaciones.map((a) => {
+                const materia = materias.find((m) => m.id === a.materia_id)
+                return (
+                  <li key={a.materia_id} className="text-sm text-gray-700">
+                    • {materia?.nombre ?? a.materia_id} → {a.rol}
+                    {a.hasta ? ` (${a.desde} — ${a.hasta})` : ` (desde ${a.desde})`}
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </div>
       </div>

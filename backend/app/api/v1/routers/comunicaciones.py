@@ -6,6 +6,8 @@ Never from URL params, body, or headers.
 Endpoints:
   POST   /v1/comunicaciones/preview                — render preview (comunicacion:enviar)
   POST   /v1/comunicaciones/encolar                — enqueue batch (comunicacion:enviar)
+  POST   /v1/comunicaciones/encolar-desde-padron   — enqueue resolving emails server-side
+  GET    /v1/comunicaciones/lotes                  — list lote summaries for a materia
   GET    /v1/comunicaciones/lotes/{lote_id}        — get lote status (comunicacion:enviar)
   PATCH  /v1/comunicaciones/lotes/{lote_id}/aprobar  — approve lote (comunicacion:aprobar)
   PATCH  /v1/comunicaciones/lotes/{lote_id}/cancelar — cancel lote (comunicacion:aprobar)
@@ -20,6 +22,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.core.dependencies import CurrentUser, DBSession
 from app.core.permisos import COMUNICACION_APROBAR, COMUNICACION_ENVIAR
 from app.core.rbac import require_permission
+from pydantic import BaseModel, ConfigDict, field_validator
+
 from app.schemas.comunicacion import (
     EncoladoRequest,
     EncoladoResponse,
@@ -27,6 +31,21 @@ from app.schemas.comunicacion import (
     PreviewRequest,
     PreviewResponse,
 )
+
+
+class EncolarDesdePadronRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    materia_id: uuid.UUID
+    entrada_padron_ids: list[uuid.UUID]
+    asunto: str
+    cuerpo: str
+
+    @field_validator("entrada_padron_ids")
+    @classmethod
+    def at_least_one(cls, v: list) -> list:
+        if not v:
+            raise ValueError("Debe haber al menos un destinatario.")
+        return v
 from app.services.comunicacion_service import ComunicacionService
 
 router = APIRouter(
@@ -98,6 +117,65 @@ async def encolar_comunicaciones(
         ip=ip,
         user_agent=ua,
     )
+
+
+# ── POST /encolar-desde-padron ────────────────────────────────────────────────
+
+
+@router.post(
+    "/encolar-desde-padron",
+    response_model=EncoladoResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_PERM_ENVIAR],
+    summary="Enqueue resolving recipient emails server-side from padron entries",
+)
+async def encolar_desde_padron(
+    body: EncolarDesdePadronRequest,
+    request: Request,
+    session: DBSession,
+    current_user: CurrentUser,
+) -> EncoladoResponse:
+    """Resolve real emails from entrada_padron_ids and enqueue the batch.
+
+    Emails never leave the backend — the frontend passes entrada_padron_ids
+    obtained from the atrasados response.
+    """
+    svc = ComunicacionService(session, current_user.tenant_id, current_user.user_id)
+    ip = request.client.host if request.client else "unknown"
+    ua = request.headers.get("user-agent", "")
+    try:
+        return await svc.encolar_desde_entradas(
+            materia_id=body.materia_id,
+            entrada_padron_ids=body.entrada_padron_ids,
+            asunto=body.asunto,
+            cuerpo=body.cuerpo,
+            ip=ip,
+            user_agent=ua,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+# ── GET /lotes ────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/lotes",
+    dependencies=[_PERM_ENVIAR],
+    summary="List lote summaries for a materia (newest first)",
+)
+async def listar_lotes(
+    materia_id: uuid.UUID,
+    session: DBSession,
+    current_user: CurrentUser,
+    limit: int = 10,
+) -> list[dict]:
+    """Return lote summaries (lote_id, total, pendientes, enviados, created_at, aprobado)."""
+    svc = ComunicacionService(session, current_user.tenant_id, current_user.user_id)
+    return await svc.listar_lotes_materia(materia_id, limit)
 
 
 # ── GET /lotes/{lote_id} ──────────────────────────────────────────────────────

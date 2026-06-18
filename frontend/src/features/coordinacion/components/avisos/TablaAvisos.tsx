@@ -1,25 +1,28 @@
 // features/coordinacion/components/avisos/TablaAvisos.tsx
-import { useAvisos, useArchivarAviso } from '../../hooks/useAvisos'
-import type { AvisoSeveridad } from '../../types'
+import { useAvisos, useDesactivarAviso } from '../../hooks/useAvisos'
+import type { AvisoScope } from '../../types'
 
-const SEVERIDAD_CLASS: Record<AvisoSeveridad, string> = {
-  info: 'bg-blue-100 text-blue-800',
-  advertencia: 'bg-yellow-100 text-yellow-800',
-  critico: 'bg-red-100 text-red-800',
+const SCOPE_LABEL: Record<AvisoScope, string> = {
+  TODOS: 'Todos',
+  ROL: 'Por rol',
+  USUARIO: 'Usuario',
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export function TablaAvisos() {
   const { data: avisos = [], isLoading } = useAvisos()
-  const archivarAviso = useArchivarAviso()
+  const desactivar = useDesactivarAviso()
 
-  if (isLoading) {
-    return <p className="text-gray-500">Cargando avisos...</p>
-  }
+  if (isLoading) return <p className="text-gray-500">Cargando avisos...</p>
 
   if (avisos.length === 0) {
-    return (
-      <p className="text-center text-gray-400 py-8">No hay avisos publicados.</p>
-    )
+    return <p className="text-center text-gray-400 py-8">No hay avisos publicados.</p>
   }
 
   return (
@@ -27,42 +30,57 @@ export function TablaAvisos() {
       <thead className="bg-gray-50">
         <tr>
           <th className="px-4 py-2 text-left font-medium text-gray-600">Título</th>
-          <th className="px-4 py-2 text-left font-medium text-gray-600">Severidad</th>
-          <th className="px-4 py-2 text-left font-medium text-gray-600">Scope</th>
-          <th className="px-4 py-2 text-left font-medium text-gray-600">Ack</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Alcance</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Vigencia desde</th>
+          <th className="px-4 py-2 text-left font-medium text-gray-600">Vigencia hasta</th>
           <th className="px-4 py-2 text-left font-medium text-gray-600">Estado</th>
           <th className="px-4 py-2 text-left font-medium text-gray-600">Acciones</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
-        {avisos.map((aviso) => (
-          <tr key={aviso.id} className={aviso.archivado ? 'opacity-50' : 'hover:bg-gray-50'}>
-            <td className="px-4 py-2 font-medium text-gray-900">{aviso.titulo}</td>
-            <td className="px-4 py-2">
-              <span
-                className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${SEVERIDAD_CLASS[aviso.severidad]}`}
-              >
-                {aviso.severidad}
-              </span>
-            </td>
-            <td className="px-4 py-2 text-gray-600">{aviso.scope}</td>
-            <td className="px-4 py-2 text-gray-600">{aviso.requiere_ack ? 'Sí' : 'No'}</td>
-            <td className="px-4 py-2 text-gray-600">
-              {aviso.archivado ? 'Archivado' : 'Activo'}
-            </td>
-            <td className="px-4 py-2">
-              {!aviso.archivado && (
-                <button
-                  onClick={() => archivarAviso.mutate(aviso.id)}
-                  disabled={archivarAviso.isPending}
-                  className="text-xs text-orange-600 hover:underline disabled:opacity-50"
-                >
-                  Archivar
-                </button>
-              )}
-            </td>
-          </tr>
-        ))}
+        {avisos.map((aviso) => {
+          const ahora = new Date()
+          const desde = new Date(aviso.vig_desde)
+          const hasta = new Date(aviso.vig_hasta)
+          const enVigencia = aviso.activo && ahora >= desde && ahora <= hasta
+          const vencido = ahora > hasta
+
+          return (
+            <tr key={aviso.id} className={!aviso.activo ? 'opacity-50' : 'hover:bg-gray-50'}>
+              <td className="px-4 py-2 font-medium text-gray-900">{aviso.titulo}</td>
+              <td className="px-4 py-2 text-gray-600">
+                {SCOPE_LABEL[aviso.scope as AvisoScope]}
+                {aviso.scope_valor && (
+                  <span className="ml-1 text-xs text-gray-400">({aviso.scope_valor})</span>
+                )}
+              </td>
+              <td className="px-4 py-2 text-gray-600 text-xs whitespace-nowrap">{formatDate(aviso.vig_desde)}</td>
+              <td className="px-4 py-2 text-gray-600 text-xs whitespace-nowrap">{formatDate(aviso.vig_hasta)}</td>
+              <td className="px-4 py-2">
+                {!aviso.activo ? (
+                  <span className="text-xs text-gray-400">Desactivado</span>
+                ) : vencido ? (
+                  <span className="text-xs text-orange-500">Vencido</span>
+                ) : enVigencia ? (
+                  <span className="text-xs font-medium text-green-600">Activo</span>
+                ) : (
+                  <span className="text-xs text-blue-500">Programado</span>
+                )}
+              </td>
+              <td className="px-4 py-2">
+                {aviso.activo && (
+                  <button
+                    onClick={() => desactivar.mutate(aviso.id)}
+                    disabled={desactivar.isPending}
+                    className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                  >
+                    Desactivar
+                  </button>
+                )}
+              </td>
+            </tr>
+          )
+        })}
       </tbody>
     </table>
   )

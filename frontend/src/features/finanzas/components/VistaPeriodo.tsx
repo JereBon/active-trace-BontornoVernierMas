@@ -1,7 +1,7 @@
 // features/finanzas/components/VistaPeriodo.tsx
 // Vista de liquidaciones del período: segmentada en general/NEXO/facturantes + KPIs
 import { useState } from 'react'
-import { useCerrarPeriodo, useVistaPeriodo } from '../hooks/useLiquidaciones'
+import { useCalcularLiquidaciones, useCerrarPeriodo, useVistaPeriodo } from '../hooks/useLiquidaciones'
 import type { LiquidacionRow } from '../types'
 
 interface Props {
@@ -87,6 +87,7 @@ function TablaSegmento({ rows, titulo }: { rows: LiquidacionRow[]; titulo: strin
 
 export function VistaPeriodo({ cohorteId, periodo }: Props) {
   const { data, isLoading, isError } = useVistaPeriodo(cohorteId, periodo)
+  const calcular = useCalcularLiquidaciones()
   const cerrar = useCerrarPeriodo()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -130,9 +131,18 @@ export function VistaPeriodo({ cohorteId, periodo }: Props) {
         </div>
       </div>
 
-      {/* Botón cerrar */}
-      {puedesCerrar && (
-        <div className="flex justify-end">
+      {/* Botones de acción */}
+      <div className="flex justify-end gap-3">
+        {!data || data.general.length === 0 ? (
+          <button
+            onClick={() => calcular.mutate({ cohorte_id: cohorteId, periodo })}
+            disabled={calcular.isPending}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {calcular.isPending ? 'Calculando…' : 'Calcular liquidaciones'}
+          </button>
+        ) : null}
+        {puedesCerrar && (
           <button
             onClick={() => setConfirmOpen(true)}
             className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
@@ -140,8 +150,8 @@ export function VistaPeriodo({ cohorteId, periodo }: Props) {
           >
             Cerrar período
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modal de confirmación */}
       {confirmOpen && (

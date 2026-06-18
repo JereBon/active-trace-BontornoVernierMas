@@ -130,6 +130,45 @@ def _make_service(session: AsyncSession, tenant_id: uuid.UUID) -> AuthService:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
+@router.get("/me", status_code=status.HTTP_200_OK)
+async def get_me(
+    current_user: CurrentUser,
+    session: DBSession,
+) -> Any:
+    """Return the authenticated user's profile (id, email, full_name, roles).
+
+    Used by the frontend after login and silent-refresh to populate the user
+    state without embedding PII in the JWT.
+    """
+    from sqlalchemy import select
+    from app.core.crypto import decrypt
+
+    stmt = select(Usuario).where(
+        Usuario.id == current_user.user_id,
+        Usuario.deleted_at.is_(None),
+    )
+    result = await session.execute(stmt)
+    usuario = result.scalar_one_or_none()
+
+    if usuario is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    try:
+        email = decrypt(usuario.email_cifrado)
+    except Exception:
+        email = ""
+
+    full_name = f"{usuario.nombre} {usuario.apellidos}".strip()
+
+    return {
+        "id": str(current_user.user_id),
+        "email": email,
+        "full_name": full_name,
+        "tenant_id": str(current_user.tenant_id),
+        "roles": current_user.roles,
+    }
+
+
 @router.post("/login", status_code=status.HTTP_200_OK)
 async def login(
     body: LoginRequest,

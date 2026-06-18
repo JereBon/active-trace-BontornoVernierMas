@@ -9,6 +9,8 @@ const TAB_ITEMS = [
   { to: '/coordinacion/encuentros', label: 'Encuentros' },
   { to: '/coordinacion/coloquios', label: 'Coloquios' },
   { to: '/coordinacion/cuatrimestre', label: 'Cuatrimestre' },
+  { to: '/coordinacion/guardias', label: 'Guardias' },
+  { to: '/coordinacion/aprobaciones', label: 'Aprobaciones' },
 ]
 
 export function CoordinacionLayout() {

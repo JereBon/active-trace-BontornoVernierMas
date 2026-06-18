@@ -17,7 +17,7 @@ export async function updateAviso(id: string, payload: Partial<AvisoCreate>): Pr
   return data
 }
 
-export async function archivarAviso(id: string): Promise<Aviso> {
-  const { data } = await api.post<Aviso>(`/v1/avisos/${id}/archivar`)
+export async function desactivarAviso(id: string): Promise<Aviso> {
+  const { data } = await api.patch<Aviso>(`/v1/avisos/${id}`, { activo: false })
   return data
 }

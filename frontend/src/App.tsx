@@ -6,7 +6,9 @@ import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { AppShell } from '@/shared/components/AppShell'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ComisionLayout } from '@/features/comision/pages/ComisionLayout'
+import { ComisionIndexPage } from '@/features/comision/pages/ComisionIndexPage'
 import { ImportacionPage } from '@/features/comision/pages/ImportacionPage'
+import { PadronPage } from '@/features/comision/pages/PadronPage'
 import { AtrasadosPage } from '@/features/comision/pages/AtrasadosPage'
 import { SinCorregirPage } from '@/features/comision/pages/SinCorregirPage'
 import { ComunicacionPage } from '@/features/comision/pages/ComunicacionPage'
@@ -19,7 +21,8 @@ import { MonitorGlobalPage } from '@/features/coordinacion/pages/MonitorGlobalPa
 import { EncuentrosPage } from '@/features/coordinacion/pages/EncuentrosPage'
 import { ColoquiosPage } from '@/features/coordinacion/pages/ColoquiosPage'
 import { CuatrimestrePage } from '@/features/coordinacion/pages/CuatrimestrePage'
-// C-24: Finanzas + Admin
+import { GuardiasPage } from '@/features/coordinacion/pages/GuardiasPage'
+import { AprobacionesPage } from '@/features/coordinacion/pages/AprobacionesPage'
 import { FinanzasLayout } from '@/features/finanzas/pages/FinanzasLayout'
 import { PeriodoPage } from '@/features/finanzas/pages/PeriodoPage'
 import { HistorialPage } from '@/features/finanzas/pages/HistorialPage'
@@ -48,19 +51,15 @@ export default function App() {
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected routes — wrapped by AuthGuard + AppShell */}
-            <Route
-              element={
-                <AuthGuard>
-                  <AppShell />
-                </AuthGuard>
-              }
-            >
+            {/* Protected routes — AuthGuard + AppShell */}
+            <Route element={<AuthGuard><AppShell /></AuthGuard>}>
               <Route path="/dashboard" element={<DashboardPage />} />
 
-              {/* Comision feature — /comision/:materiaId/* */}
-              <Route path="/comision/:materiaId" element={<ComisionLayout />}>
+              {/* Comision — PROFESOR/TUTOR/COORDINADOR/ADMIN */}
+              <Route path="/comision" element={<AuthGuard requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}><ComisionIndexPage /></AuthGuard>} />
+              <Route path="/comision/:materiaId" element={<AuthGuard requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}><ComisionLayout /></AuthGuard>}>
                 <Route index element={<Navigate to="atrasados" replace />} />
+                <Route path="padron" element={<PadronPage />} />
                 <Route path="importacion" element={<ImportacionPage />} />
                 <Route path="atrasados" element={<AtrasadosPage />} />
                 <Route path="sin-corregir" element={<SinCorregirPage />} />
@@ -68,8 +67,8 @@ export default function App() {
                 <Route path="monitor" element={<MonitorPage />} />
               </Route>
 
-              {/* Coordinacion feature — /coordinacion/* (COORDINADOR/ADMIN) */}
-              <Route path="/coordinacion" element={<CoordinacionLayout />}>
+              {/* Coordinacion — COORDINADOR/ADMIN */}
+              <Route path="/coordinacion" element={<AuthGuard requiredRoles={['COORDINADOR', 'ADMIN']}><CoordinacionLayout /></AuthGuard>}>
                 <Route index element={<Navigate to="equipos" replace />} />
                 <Route path="equipos" element={<EquiposPage />} />
                 <Route path="avisos" element={<AvisosPage />} />
@@ -78,10 +77,12 @@ export default function App() {
                 <Route path="encuentros" element={<EncuentrosPage />} />
                 <Route path="coloquios" element={<ColoquiosPage />} />
                 <Route path="cuatrimestre" element={<CuatrimestrePage />} />
+                <Route path="guardias" element={<GuardiasPage />} />
+                <Route path="aprobaciones" element={<AprobacionesPage />} />
               </Route>
 
-              {/* Finanzas feature — /finanzas/* (FINANZAS role) */}
-              <Route path="/finanzas" element={<FinanzasLayout />}>
+              {/* Finanzas — FINANZAS/ADMIN */}
+              <Route path="/finanzas" element={<AuthGuard requiredRoles={['FINANZAS', 'ADMIN']}><FinanzasLayout /></AuthGuard>}>
                 <Route index element={<Navigate to="periodo" replace />} />
                 <Route path="periodo" element={<PeriodoPage />} />
                 <Route path="historial" element={<HistorialPage />} />
@@ -89,8 +90,8 @@ export default function App() {
                 <Route path="facturas" element={<FacturasPage />} />
               </Route>
 
-              {/* Admin feature — /admin/* (ADMIN role) */}
-              <Route path="/admin" element={<AdminLayout />}>
+              {/* Admin — ADMIN */}
+              <Route path="/admin" element={<AuthGuard requiredRoles={['ADMIN']}><AdminLayout /></AuthGuard>}>
                 <Route index element={<Navigate to="estructura" replace />} />
                 <Route path="estructura" element={<EstructuraPage />} />
                 <Route path="usuarios" element={<UsuariosPage />} />

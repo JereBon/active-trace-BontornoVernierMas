@@ -8,13 +8,31 @@ import {
   type ReactNode,
 } from 'react'
 import { setAccessToken, clearSession } from '@/shared/services/api'
-import { loginApi, refreshApi } from '@/features/auth/services/authService'
+import { getMeApi, loginApi, refreshApi } from '@/features/auth/services/authService'
 import {
   isAuthChallenge,
   type AuthChallenge,
   type LoginRequest,
   type User,
 } from '@/features/auth/types/auth.types'
+
+// Decode JWT payload without verifying signature (backend already verified it).
+// Used to extract sub, tenant_id and roles for the UI.
+function decodeJwtUser(token: string): User | null {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(b64)) as Record<string, unknown>
+    return {
+      id: (payload.sub as string) ?? '',
+      email: '',
+      full_name: '',
+      tenant_id: (payload.tenant_id as string) ?? '',
+      roles: Array.isArray(payload.roles) ? (payload.roles as string[]) : [],
+    }
+  } catch {
+    return null
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Context shape
@@ -60,8 +78,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refreshApi(rt)
       .then((data) => {
         setAccessToken(data.access_token)
+        localStorage.setItem('rt', data.refresh_token)
+        return getMeApi()
+      })
+      .then((me) => {
+        setUser(me)
         setIsAuthenticated(true)
-        // user details require a GET /api/auth/me call — added in a future change
       })
       .catch(() => {
         localStorage.removeItem('rt')
@@ -82,7 +104,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     setAccessToken(outcome.access_token)
     localStorage.setItem('rt', outcome.refresh_token)
-    setUser(outcome.user)
+    const me = await getMeApi()
+    setUser(me)
     setIsAuthenticated(true)
     setChallenge(null)
   }, [])

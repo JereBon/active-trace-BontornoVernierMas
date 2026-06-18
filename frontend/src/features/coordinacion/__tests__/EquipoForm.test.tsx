@@ -1,55 +1,83 @@
 // __tests__/EquipoForm.test.tsx
-// TDD tests for EquipoForm — empty render, Zod validation, submit.
+// TDD tests for EquipoForm — renders selects, validation, submit.
 
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EquipoForm } from '../components/equipos/EquipoForm'
 
-describe('EquipoForm', () => {
-  it('renders all required fields', () => {
-    render(<EquipoForm onSubmit={vi.fn()} onCancel={vi.fn()} />)
+vi.mock('../services/equiposService', () => ({
+  getUsuarios: vi.fn().mockResolvedValue([
+    { id: '00000000-0000-0000-0000-000000000001', nombre: 'Juan', apellidos: 'Pérez', email: 'juan@test.com' },
+  ]),
+}))
 
-    expect(screen.getByLabelText(/nombre/i)).toBeTruthy()
-    expect(screen.getByLabelText(/descripci/i)).toBeTruthy()
+vi.mock('@/features/admin/services/estructuraService', () => ({
+  getCarreras: vi.fn().mockResolvedValue([]),
+  getCohortes: vi.fn().mockResolvedValue([]),
+  getMaterias: vi.fn().mockResolvedValue([]),
+}))
+
+function wrapper({ children }: { children: ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+}
+
+describe('EquipoForm', () => {
+  it('renders all required fields', async () => {
+    render(<EquipoForm onSubmit={vi.fn()} onCancel={vi.fn()} />, { wrapper })
+
+    expect(await screen.findByLabelText(/docente/i)).toBeTruthy()
+    expect(screen.getByLabelText(/^rol$/i)).toBeTruthy()
+    expect(screen.getByLabelText(/vigencia desde/i)).toBeTruthy()
   })
 
-  it('shows validation error when nombre is empty and form is submitted', async () => {
+  it('shows validation error when usuario_id is empty and form is submitted', async () => {
     const onSubmit = vi.fn()
-    render(<EquipoForm onSubmit={onSubmit} onCancel={vi.fn()} />)
+    render(<EquipoForm onSubmit={onSubmit} onCancel={vi.fn()} />, { wrapper })
+
+    await screen.findByLabelText(/docente/i)
 
     const submitBtn = screen.getByRole('button', { name: /guardar/i })
     fireEvent.click(submitBtn)
 
     await waitFor(() => {
-      expect(screen.getByText(/nombre es requerido/i)).toBeTruthy()
+      expect(screen.getByText(/seleccioná un docente/i)).toBeTruthy()
     })
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('calls onSubmit with form data when valid', async () => {
+  it('calls onSubmit with correct payload when form is valid', async () => {
+    const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<EquipoForm onSubmit={onSubmit} onCancel={vi.fn()} />)
+    render(<EquipoForm onSubmit={onSubmit} onCancel={vi.fn()} />, { wrapper })
 
-    fireEvent.change(screen.getByLabelText(/nombre/i), {
-      target: { value: 'Equipo Test' },
-    })
+    // Wait for query to resolve and user option to appear
+    const option = await screen.findByRole('option', { name: /juan/i })
+    expect(option).toBeTruthy()
 
-    const submitBtn = screen.getByRole('button', { name: /guardar/i })
-    fireEvent.click(submitBtn)
+    await user.selectOptions(screen.getByLabelText(/docente/i), '00000000-0000-0000-0000-000000000001')
+    await user.clear(screen.getByLabelText(/vigencia desde/i))
+    await user.type(screen.getByLabelText(/vigencia desde/i), '2025-03-01')
+
+    await user.click(screen.getByRole('button', { name: /guardar/i }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ nombre: 'Equipo Test' }),
+        expect.objectContaining({ desde: '2025-03-01', usuario_id: '00000000-0000-0000-0000-000000000001' }),
       )
     })
   })
 
-  it('calls onCancel when cancel button is clicked', () => {
+  it('calls onCancel when cancel button is clicked', async () => {
     const onCancel = vi.fn()
-    render(<EquipoForm onSubmit={vi.fn()} onCancel={onCancel} />)
+    render(<EquipoForm onSubmit={vi.fn()} onCancel={onCancel} />, { wrapper })
 
-    const cancelBtn = screen.getByRole('button', { name: /cancelar/i })
-    fireEvent.click(cancelBtn)
+    await screen.findByLabelText(/docente/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
 
     expect(onCancel).toHaveBeenCalledOnce()
   })

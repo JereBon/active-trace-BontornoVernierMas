@@ -1,5 +1,5 @@
 // __tests__/TablaAvisos.test.tsx
-// TDD tests for TablaAvisos — render activos/archivados, badge severidad, botón archivar.
+// TDD tests for TablaAvisos — render activos/inactivos, botón desactivar.
 
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -10,7 +10,7 @@ import type { Aviso } from '../types'
 
 vi.mock('../services/avisosService', () => ({
   getAvisos: vi.fn(),
-  archivarAviso: vi.fn(),
+  desactivarAviso: vi.fn(),
 }))
 
 import { getAvisos } from '../services/avisosService'
@@ -26,12 +26,14 @@ function makeAviso(overrides: Partial<Aviso> = {}): Aviso {
     id: crypto.randomUUID(),
     titulo: 'Aviso de prueba',
     cuerpo: 'Contenido del aviso',
-    scope: 'todos',
-    severidad: 'info',
-    vigencia_hasta: null,
-    requiere_ack: false,
-    archivado: false,
+    scope: 'TODOS',
+    scope_valor: null,
+    vig_desde: '2024-01-01T00:00:00Z',
+    vig_hasta: '2025-01-01T00:00:00Z',
+    activo: true,
+    publicado_por: crypto.randomUUID(),
     created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
     tenant_id: 'tenant-1',
     ...overrides,
   }
@@ -40,18 +42,16 @@ function makeAviso(overrides: Partial<Aviso> = {}): Aviso {
 describe('TablaAvisos', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('renders aviso rows with title and severity badge', async () => {
+  it('renders aviso rows with title', async () => {
     mockGetAvisos.mockResolvedValueOnce([
-      makeAviso({ titulo: 'Aviso Crítico', severidad: 'critico' }),
-      makeAviso({ titulo: 'Aviso Info', severidad: 'info' }),
+      makeAviso({ titulo: 'Aviso Importante' }),
+      makeAviso({ titulo: 'Aviso Info' }),
     ])
 
     render(<TablaAvisos />, { wrapper })
 
-    expect(await screen.findByText('Aviso Crítico')).toBeTruthy()
+    expect(await screen.findByText('Aviso Importante')).toBeTruthy()
     expect(screen.getByText('Aviso Info')).toBeTruthy()
-    // Severity badge for critico
-    expect(screen.getByText(/critico/i)).toBeTruthy()
   })
 
   it('shows empty state when no avisos exist', async () => {
@@ -63,25 +63,25 @@ describe('TablaAvisos', () => {
     expect(msg).toBeTruthy()
   })
 
-  it('renders archivar button for active avisos', async () => {
+  it('renders desactivar button for active avisos', async () => {
     mockGetAvisos.mockResolvedValueOnce([
-      makeAviso({ titulo: 'Aviso Activo', archivado: false }),
+      makeAviso({ titulo: 'Aviso Activo', activo: true }),
     ])
 
     render(<TablaAvisos />, { wrapper })
 
-    const btn = await screen.findByRole('button', { name: /archivar/i })
+    const btn = await screen.findByRole('button', { name: /desactivar/i })
     expect(btn).toBeTruthy()
   })
 
-  it('does not show archivar button for already archived avisos', async () => {
+  it('does not show desactivar button for already inactive avisos', async () => {
     mockGetAvisos.mockResolvedValueOnce([
-      makeAviso({ titulo: 'Aviso Archivado', archivado: true }),
+      makeAviso({ titulo: 'Aviso Inactivo', activo: false }),
     ])
 
     render(<TablaAvisos />, { wrapper })
 
-    await screen.findByText('Aviso Archivado')
-    expect(screen.queryByRole('button', { name: /archivar/i })).toBeNull()
+    await screen.findByText('Aviso Inactivo')
+    expect(screen.queryByRole('button', { name: /desactivar/i })).toBeNull()
   })
 })

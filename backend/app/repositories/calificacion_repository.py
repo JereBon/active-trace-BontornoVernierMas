@@ -82,6 +82,7 @@ class CalificacionRepository(BaseRepository[Calificacion]):
                 .on_conflict_do_update(
                     constraint="uq_calificacion_entrada_actividad",
                     set_={
+                        "materia_id": data["materia_id"],
                         "nota_numerica": data.get("nota_numerica"),
                         "nota_textual": data.get("nota_textual"),
                         "aprobado": data["aprobado"],

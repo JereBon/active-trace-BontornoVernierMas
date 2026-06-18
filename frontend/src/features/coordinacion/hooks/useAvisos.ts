@@ -1,6 +1,6 @@
 // features/coordinacion/hooks/useAvisos.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { archivarAviso, createAviso, getAvisos, updateAviso } from '../services/avisosService'
+import { desactivarAviso, createAviso, getAvisos, updateAviso } from '../services/avisosService'
 import type { AvisoCreate } from '../types'
 
 const QUERY_KEY = ['avisos']
@@ -26,10 +26,10 @@ export function useUpdateAviso() {
   })
 }
 
-export function useArchivarAviso() {
+export function useDesactivarAviso() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => archivarAviso(id),
+    mutationFn: (id: string) => desactivarAviso(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
   })
 }

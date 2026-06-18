@@ -2,27 +2,27 @@
 import { useState } from 'react'
 import { TablaEncuentros } from '../components/encuentros/TablaEncuentros'
 import { EncuentroForm } from '../components/encuentros/EncuentroForm'
-import { useCreateEncuentro } from '../hooks/useEncuentros'
-import type { EncuentroCreate } from '../types'
+import { useCreateSlot } from '../hooks/useEncuentros'
+import type { SlotCreate, InstanciaEncuentro } from '../types'
 
 export function EncuentrosPage() {
   const [showForm, setShowForm] = useState(false)
-  const createEncuentro = useCreateEncuentro()
+  const [editing, setEditing] = useState<InstanciaEncuentro | null>(null)
+  const createSlot = useCreateSlot()
 
-  const handleSubmit = (data: EncuentroCreate) => {
-    createEncuentro.mutate(data, { onSuccess: () => setShowForm(false) })
+  const handleSubmit = (data: SlotCreate) => {
+    createSlot.mutate(data, { onSuccess: () => setShowForm(false) })
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800">Encuentros</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Nuevo Encuentro
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => { setEditing(null); setShowForm(true) }} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+            Nuevo Encuentro
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -31,13 +31,13 @@ export function EncuentrosPage() {
           <EncuentroForm
             onSubmit={handleSubmit}
             onCancel={() => setShowForm(false)}
-            isLoading={createEncuentro.isPending}
+            isLoading={createSlot.isPending}
           />
         </div>
       )}
 
       <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <TablaEncuentros />
+        <TablaEncuentros onEdit={(e) => setEditing(e)} />
       </div>
     </div>
   )

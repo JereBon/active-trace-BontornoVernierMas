@@ -27,6 +27,9 @@ htmlcov/
 # Docker volumes / local data
 postgres_data/
 
+# Node
+node_modules/
+
 # Local tooling (no va al repo)
 .claude/
 .build/

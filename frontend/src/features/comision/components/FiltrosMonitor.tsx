@@ -4,10 +4,11 @@ import { useState } from 'react'
 import type { MonitorParams } from '../types'
 
 interface Props {
+  materiaId?: string
   onBuscar: (params: MonitorParams) => void
 }
 
-export function FiltrosMonitor({ onBuscar }: Props) {
+export function FiltrosMonitor({ materiaId, onBuscar }: Props) {
   const [alumno, setAlumno] = useState('')
   const [comision, setComision] = useState('')
   const [soloAtrasados, setSoloAtrasados] = useState(false)
@@ -18,6 +19,7 @@ export function FiltrosMonitor({ onBuscar }: Props) {
       limit: 100,
       offset: 0,
     }
+    if (materiaId) params.materia_id = materiaId
     if (alumno.trim()) params.alumno_nombre = alumno.trim()
     if (comision.trim()) params.comision = comision.trim()
     if (soloAtrasados) params.solo_atrasados = true
@@ -28,7 +30,7 @@ export function FiltrosMonitor({ onBuscar }: Props) {
     setAlumno('')
     setComision('')
     setSoloAtrasados(false)
-    onBuscar({ limit: 100, offset: 0 })
+    onBuscar({ limit: 100, offset: 0, materia_id: materiaId })
   }
 
   return (

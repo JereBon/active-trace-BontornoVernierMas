@@ -20,19 +20,19 @@ import type { Carrera, Cohorte, Materia } from '../types'
 const carreraSchema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   codigo: z.string().min(1, 'Requerido'),
-})
+}).strict()
 
 const cohorteSchema = z.object({
   carrera_id: z.string().uuid('UUID inválido'),
   anio: z.coerce.number().min(2000).max(2100),
   plan: z.string().optional(),
-})
+}).strict()
 
 const materiaSchema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   codigo: z.string().min(1, 'Requerido'),
   categoria_clave: z.string().optional(),
-})
+}).strict()
 
 type CarreraForm = z.infer<typeof carreraSchema>
 type CohorteForm = z.infer<typeof cohorteSchema>
@@ -145,6 +145,7 @@ function TablaCohortes({ rows }: { rows: Cohorte[] }) {
 
 function FormCohorte({ onClose }: { onClose: () => void }) {
   const create = useCreateCohorte()
+  const { data: carreras = [] } = useCarreras()
   const { register, handleSubmit, formState: { errors } } = useForm<CohorteForm>({
     resolver: zodResolver(cohorteSchema),
   })
@@ -154,8 +155,13 @@ function FormCohorte({ onClose }: { onClose: () => void }) {
       <h4 className="text-sm font-semibold text-gray-700">Nueva Cohorte</h4>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600">Carrera ID (UUID)</label>
-          <input {...register('carrera_id')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          <label className="block text-xs font-medium text-gray-600">Carrera</label>
+          <select {...register('carrera_id')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">Seleccioná una carrera…</option>
+            {carreras.filter((c) => c.activa).map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre} ({c.codigo})</option>
+            ))}
+          </select>
           {errors.carrera_id && <p className="mt-1 text-xs text-red-500">{errors.carrera_id.message}</p>}
         </div>
         <div>

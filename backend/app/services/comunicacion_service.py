@@ -319,6 +319,77 @@ class ComunicacionService:
             mensajes=msgs_out,
         )
 
+    # ── Encolar desde entradas de padrón (resuelve emails internamente) ───────
+
+    async def encolar_desde_entradas(
+        self,
+        materia_id: uuid.UUID,
+        entrada_padron_ids: list[uuid.UUID],
+        asunto: str,
+        cuerpo: str,
+        *,
+        ip: str = "unknown",
+        user_agent: str = "",
+    ) -> EncoladoResponse:
+        """Resolve real emails from padron entries and enqueue a batch.
+
+        The frontend passes entrada_padron_ids (from the atrasados response).
+        This method decrypts their emails server-side so PII never leaves the backend.
+        """
+        from sqlalchemy import select  # noqa: PLC0415
+        from app.models.entrada_padron import EntradaPadron  # noqa: PLC0415
+
+        if not entrada_padron_ids:
+            raise ValueError("No se proporcionaron destinatarios.")
+
+        stmt = select(EntradaPadron).where(
+            EntradaPadron.tenant_id == self._tenant_id,
+            EntradaPadron.id.in_(entrada_padron_ids),
+            EntradaPadron.deleted_at.is_(None),
+        )
+        result = await self._session.execute(stmt)
+        entradas = list(result.scalars().all())
+
+        destinatarios: list[DestinatarioItem] = []
+        for e in entradas:
+            try:
+                plain_email = decrypt(e.email_cifrado)
+            except Exception:  # noqa: BLE001
+                continue
+            destinatarios.append(
+                DestinatarioItem(
+                    email=plain_email,
+                    variables={
+                        "nombre": e.nombre or "",
+                        "apellidos": e.apellidos or "",
+                        "comision": e.comision or "",
+                        "regional": e.regional or "",
+                    },
+                )
+            )
+
+        if not destinatarios:
+            raise ValueError("No se encontraron destinatarios válidos en el padrón.")
+
+        return await self.encolar_lote(
+            materia_id=materia_id,
+            asunto=asunto,
+            cuerpo=cuerpo,
+            destinatarios=destinatarios,
+            ip=ip,
+            user_agent=user_agent,
+        )
+
+    # ── Listar lotes por materia ──────────────────────────────────────────────
+
+    async def listar_lotes_materia(
+        self,
+        materia_id: uuid.UUID,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Return lote summaries for a materia, newest first."""
+        return await self._repo.listar_lotes_materia(materia_id, limit)
+
     # ── Private helpers ───────────────────────────────────────────────────────
 
     async def _get_tenant_requiere_aprobacion(self) -> bool:

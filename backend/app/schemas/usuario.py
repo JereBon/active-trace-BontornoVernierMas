@@ -47,7 +47,6 @@ class UsuarioUpdate(BaseModel):
     nombre: Optional[str] = Field(default=None, max_length=200)
     apellidos: Optional[str] = Field(default=None, max_length=200)
     dni: Optional[str] = Field(default=None, max_length=20)
-    cuil: Optional[str] = Field(default=None, max_length=20)
     cbu: Optional[str] = Field(default=None, max_length=30)
     alias_cbu: Optional[str] = Field(default=None, max_length=100)
     banco: Optional[str] = Field(default=None, max_length=100)

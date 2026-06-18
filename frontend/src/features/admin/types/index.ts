@@ -75,11 +75,11 @@ export type RolUsuario = 'ALUMNO' | 'TUTOR' | 'PROFESOR' | 'COORDINADOR' | 'NEXO
 
 export interface Usuario {
   id: string
-  email: string
-  nombre: string
-  apellido: string
-  legajo: string | null
-  roles: RolUsuario[]
+  email?: string | null
+  nombre?: string | null
+  apellidos?: string | null
+  legajo?: string | null
+  roles?: RolUsuario[]
   activo: boolean
   tenant_id: string
   created_at: string
@@ -91,29 +91,43 @@ export interface UsuarioActivarToggle {
 
 // ─── Auditoría ────────────────────────────────────────────────────────────────
 
+export interface AccionPorDia {
+  fecha: string
+  total: number
+}
+
+export interface InteraccionDocente {
+  actor_id: string
+  total: number
+}
+
+export interface InteraccionMateria {
+  actor_id: string
+  materia_id: string | null
+  total: number
+}
+
 export interface PanelMetricas {
-  total_acciones: number
-  acciones_hoy: number
-  top_acciones: Array<{ accion: string; cantidad: number }>
-  top_actores: Array<{ actor_id: string; nombre: string | null; cantidad: number }>
+  acciones_por_dia: AccionPorDia[]
+  por_docente: InteraccionDocente[]
+  por_materia: InteraccionMateria[]
 }
 
 export interface LogEntry {
   id: string
+  tenant_id: string
   actor_id: string
-  actor_nombre: string | null
+  actor_impersonado_id: string | null
   accion: string
-  recurso_tipo: string | null
-  recurso_id: string | null
   detalle: Record<string, unknown> | null
-  ip: string | null
-  created_at: string
+  filas_afectadas: number
+  ip: string
+  user_agent: string
+  fecha_hora: string
 }
 
 export interface LogPaginado {
   total: number
-  offset: number
-  limit: number
   items: LogEntry[]
 }
 

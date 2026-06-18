@@ -2,19 +2,13 @@
 // Panel de auditoría: métricas + tabla de log con filtros
 import { useState } from 'react'
 import { useAuditoriaLog, usePanelMetricas } from '../hooks/useAuditoria'
+import { useUsuarios } from '../hooks/useUsuarios'
 import type { LogFiltros } from '../types'
-
-function MetricaCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-gray-900">{value.toLocaleString()}</p>
-    </div>
-  )
-}
 
 export function PanelAuditoria() {
   const { data: panel, isLoading: loadingPanel } = usePanelMetricas()
+  const { data: usuarios = [] } = useUsuarios()
+  const usuarioMap = new Map(usuarios.map((u) => [u.id, u.nombre && u.apellidos ? `${u.apellidos}, ${u.nombre}` : (u.email ?? u.id)]))
   const [filtros, setFiltros] = useState<LogFiltros>({ limit: 50, offset: 0 })
   const [inputFiltros, setInputFiltros] = useState({ accion: '', fecha_desde: '', fecha_hasta: '' })
   const { data: log, isLoading: loadingLog } = useAuditoriaLog(filtros)
@@ -29,6 +23,10 @@ export function PanelAuditoria() {
     })
   }
 
+  const today = new Date().toISOString().slice(0, 10)
+  const totalAcciones = panel?.acciones_por_dia.reduce((s, d) => s + d.total, 0) ?? 0
+  const accionesHoy = panel?.acciones_por_dia.find((d) => d.fecha === today)?.total ?? 0
+
   return (
     <div className="space-y-6">
       {/* Panel de métricas */}
@@ -38,19 +36,42 @@ export function PanelAuditoria() {
         <section aria-label="panel-metricas">
           <h2 className="mb-3 text-base font-semibold text-gray-900">Métricas generales</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            <MetricaCard label="Total acciones" value={panel.total_acciones} />
-            <MetricaCard label="Acciones hoy" value={panel.acciones_hoy} />
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400">Total acciones</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">{totalAcciones.toLocaleString()}</p>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400">Acciones hoy</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">{accionesHoy}</p>
+            </div>
           </div>
 
-          {panel.top_acciones.length > 0 && (
+          {panel.acciones_por_dia.length > 0 && (
             <div className="mt-4">
-              <h3 className="mb-2 text-sm font-medium text-gray-700">Top acciones</h3>
+              <h3 className="mb-2 text-sm font-medium text-gray-700">Acciones por día (últimos 30 días)</h3>
               <ul className="space-y-1">
-                {panel.top_acciones.map((a) => (
-                  <li key={a.accion} className="flex justify-between text-sm text-gray-700">
-                    <span className="font-mono text-xs">{a.accion}</span>
-                    <span>{a.cantidad}</span>
-                  </li>
+                {[...panel.acciones_por_dia]
+                  .sort((a, b) => b.fecha.localeCompare(a.fecha))
+                  .slice(0, 10)
+                  .map((d) => (
+                    <li key={d.fecha} className="flex justify-between text-sm text-gray-700">
+                      <span className="font-mono text-xs text-gray-500">{d.fecha}</span>
+                      <span>{d.total}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+
+          {panel.por_docente.length > 0 && (
+            <div className="mt-4">
+              <h3 className="mb-2 text-sm font-medium text-gray-700">Top docentes</h3>
+              <ul className="space-y-1">
+                {panel.por_docente.slice(0, 5).map((d) => (
+                    <li key={d.actor_id} className="flex justify-between text-sm text-gray-700">
+                      <span className="text-xs">{usuarioMap.get(d.actor_id) ?? d.actor_id}</span>
+                      <span>{d.total}</span>
+                    </li>
                 ))}
               </ul>
             </div>
@@ -111,7 +132,6 @@ export function PanelAuditoria() {
                   <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Fecha</th>
                   <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Actor</th>
                   <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Acción</th>
-                  <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Recurso</th>
                   <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">IP</th>
                 </tr>
               </thead>
@@ -119,16 +139,13 @@ export function PanelAuditoria() {
                 {log.items.map((entry) => (
                   <tr key={entry.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                     <td className="py-2 px-4 text-xs text-gray-500">
-                      {new Date(entry.created_at).toLocaleString('es-AR')}
+                      {new Date(entry.fecha_hora).toLocaleString('es-AR')}
                     </td>
-                    <td className="py-2 px-4 text-sm text-gray-700">
-                      {entry.actor_nombre ?? entry.actor_id}
+                    <td className="py-2 px-4 text-xs text-gray-700 max-w-[160px] truncate" title={entry.actor_id}>
+                      {usuarioMap.get(entry.actor_id) ?? entry.actor_id}
                     </td>
                     <td className="py-2 px-4 font-mono text-xs text-gray-900">{entry.accion}</td>
-                    <td className="py-2 px-4 text-xs text-gray-600">
-                      {entry.recurso_tipo ?? '—'}
-                    </td>
-                    <td className="py-2 px-4 text-xs text-gray-500">{entry.ip ?? '—'}</td>
+                    <td className="py-2 px-4 text-xs text-gray-500">{entry.ip}</td>
                   </tr>
                 ))}
               </tbody>

@@ -7,8 +7,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Spinner } from '@/shared/components/Spinner'
 import {
   previewComunicacion,
-  encolarComunicaciones,
-  type EncolarBody,
+  encolarDesdePadron,
   type EncolarResponse,
 } from '../services/comunicacionesService'
 import type { PreviewComunicacion } from '../types'
@@ -22,12 +21,12 @@ type FormValues = z.infer<typeof schema>
 
 interface Props {
   materiaId: string
-  /** Recipients derived from atrasados list */
-  destinatarios: Array<{ email: string; variables?: Record<string, string> }>
+  entradaPadronIds: string[]
+  destinatariosCount: number
   onEnviado: (response: EncolarResponse) => void
 }
 
-export function FormularioComunicacion({ materiaId, destinatarios, onEnviado }: Props) {
+export function FormularioComunicacion({ materiaId, entradaPadronIds, destinatariosCount, onEnviado }: Props) {
   const {
     register,
     handleSubmit,
@@ -42,8 +41,14 @@ export function FormularioComunicacion({ materiaId, destinatarios, onEnviado }: 
       previewComunicacion({ asunto: values.asunto, cuerpo: values.cuerpo }),
   })
 
-  const encolarMut = useMutation<EncolarResponse, Error, EncolarBody>({
-    mutationFn: encolarComunicaciones,
+  const encolarMut = useMutation<EncolarResponse, Error, FormValues>({
+    mutationFn: (values) =>
+      encolarDesdePadron({
+        materia_id: materiaId,
+        entrada_padron_ids: entradaPadronIds,
+        asunto: values.asunto,
+        cuerpo: values.cuerpo,
+      }),
     onSuccess: onEnviado,
   })
 
@@ -54,12 +59,7 @@ export function FormularioComunicacion({ materiaId, destinatarios, onEnviado }: 
   }
 
   function onSubmit(values: FormValues) {
-    encolarMut.mutate({
-      materia_id: materiaId || undefined,
-      asunto: values.asunto,
-      cuerpo: values.cuerpo,
-      destinatarios,
-    })
+    encolarMut.mutate(values)
   }
 
   return (
@@ -115,7 +115,7 @@ export function FormularioComunicacion({ materiaId, destinatarios, onEnviado }: 
       )}
 
       <p className="text-xs text-gray-500">
-        {destinatarios.length} destinatario{destinatarios.length !== 1 ? 's' : ''}
+        {destinatariosCount} destinatario{destinatariosCount !== 1 ? 's' : ''} (alumnos atrasados)
       </p>
 
       <div className="flex gap-3">
@@ -131,7 +131,7 @@ export function FormularioComunicacion({ materiaId, destinatarios, onEnviado }: 
 
         <button
           type="submit"
-          disabled={encolarMut.isPending || destinatarios.length === 0}
+          disabled={encolarMut.isPending || destinatariosCount === 0}
           className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {encolarMut.isPending && <Spinner />}

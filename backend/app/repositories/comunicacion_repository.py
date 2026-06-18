@@ -175,6 +175,46 @@ class ComunicacionRepository(BaseRepository[Comunicacion]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def listar_lotes_materia(
+        self,
+        materia_id: uuid.UUID,
+        limit: int = 20,
+    ) -> list[dict]:
+        """Return one summary row per lote_id for a materia, newest first."""
+        from sqlalchemy import Integer, case, func
+
+        stmt = (
+            select(
+                Comunicacion.lote_id,
+                func.min(Comunicacion.created_at).label("created_at"),
+                func.count(Comunicacion.id).label("total"),
+                func.sum(
+                    case((Comunicacion.estado == "Pendiente", 1), else_=0)
+                    .cast(Integer)
+                ).label("pendientes"),
+                func.sum(
+                    case((Comunicacion.estado == "Enviado", 1), else_=0)
+                    .cast(Integer)
+                ).label("enviados"),
+                func.sum(
+                    case((Comunicacion.estado == "Error", 1), else_=0)
+                    .cast(Integer)
+                ).label("errores"),
+                func.bool_and(Comunicacion.aprobado).label("aprobado"),
+            )
+            .where(
+                Comunicacion.tenant_id == self._tenant_id,
+                Comunicacion.materia_id == materia_id,
+                Comunicacion.deleted_at.is_(None),
+            )
+            .group_by(Comunicacion.lote_id)
+            .order_by(func.min(Comunicacion.created_at).desc())
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        rows = result.mappings().all()
+        return [dict(r) for r in rows]
+
     async def update_estado_worker(
         self,
         comunicacion_id: uuid.UUID,

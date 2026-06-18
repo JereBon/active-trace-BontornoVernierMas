@@ -4,10 +4,11 @@ import { Spinner } from '@/shared/components/Spinner'
 
 interface AuthGuardProps {
   children: React.ReactNode
+  requiredRoles?: string[]
 }
 
-export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, isLoading } = useAuth()
+export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
+  const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -25,6 +26,13 @@ export function AuthGuard({ children }: AuthGuardProps) {
         replace
       />
     )
+  }
+
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasRole = requiredRoles.some((role) => user?.roles?.includes(role))
+    if (!hasRole) {
+      return <Navigate to="/dashboard" replace />
+    }
   }
 
   return <>{children}</>

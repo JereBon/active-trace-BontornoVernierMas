@@ -29,8 +29,9 @@ export async function updateCarrera(id: string, payload: CarreraUpdate): Promise
   return data
 }
 
-export async function deleteCarrera(id: string): Promise<void> {
-  await api.delete(`/v1/carreras/${id}`)
+export async function deleteCarrera(id: string): Promise<Carrera> {
+  const { data } = await api.patch<Carrera>(`/v1/carreras/${id}`, { activa: false })
+  return data
 }
 
 // ─── Cohortes ─────────────────────────────────────────────────────────────────
