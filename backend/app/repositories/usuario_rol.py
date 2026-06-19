@@ -56,6 +56,28 @@ class UsuarioRolRepository(BaseRepository[UsuarioRol]):
         result = await self._session.execute(stmt)
         return set(result.scalars().all())
 
+    async def asignar_roles(self, usuario_id: uuid.UUID, roles: list[str]) -> None:
+        """Assign roles to a user by role code. Creates UsuarioRol records with vig_desde=today."""
+        if not roles:
+            return
+        stmt = select(Rol.id).where(
+            Rol.codigo.in_(roles),
+            Rol.tenant_id == self._tenant_id,
+            Rol.deleted_at.is_(None),
+        )
+        result = await self._session.execute(stmt)
+        role_ids = list(result.scalars().all())
+
+        today = date.today()
+        for rol_id in role_ids:
+            ur = UsuarioRol(
+                usuario_id=usuario_id,
+                rol_id=rol_id,
+                vig_desde=today,
+                tenant_id=self._tenant_id,
+            )
+            self._session.add(ur)
+
     async def get_roles_efectivos(self, usuario_id: uuid.UUID) -> list[str]:
         """Return the list of role codes (e.g. 'ADMIN', 'COORDINADOR') active today."""
         today = date.today()

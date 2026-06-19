@@ -3,6 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/features/auth/hooks/useAuth'
 import { AuthGuard } from '@/features/auth/components/AuthGuard'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
+import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage'
+import { PerfilPage } from '@/features/auth/pages/PerfilPage'
+import { TwoFactorEnrollPage } from '@/features/auth/pages/TwoFactorEnrollPage'
+import { InboxPage } from '@/features/inbox/pages/InboxPage'
 import { AppShell } from '@/shared/components/AppShell'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { ComisionLayout } from '@/features/comision/pages/ComisionLayout'
@@ -23,6 +28,8 @@ import { ColoquiosPage } from '@/features/coordinacion/pages/ColoquiosPage'
 import { CuatrimestrePage } from '@/features/coordinacion/pages/CuatrimestrePage'
 import { GuardiasPage } from '@/features/coordinacion/pages/GuardiasPage'
 import { AprobacionesPage } from '@/features/coordinacion/pages/AprobacionesPage'
+import { ProgramasPage } from '@/features/coordinacion/pages/ProgramasPage'
+import { FechasPage } from '@/features/coordinacion/pages/FechasPage'
 import { FinanzasLayout } from '@/features/finanzas/pages/FinanzasLayout'
 import { PeriodoPage } from '@/features/finanzas/pages/PeriodoPage'
 import { HistorialPage } from '@/features/finanzas/pages/HistorialPage'
@@ -32,6 +39,7 @@ import { AdminLayout } from '@/features/admin/pages/AdminLayout'
 import { EstructuraPage } from '@/features/admin/pages/EstructuraPage'
 import { UsuariosPage } from '@/features/admin/pages/UsuariosPage'
 import { AuditoriaPage } from '@/features/admin/pages/AuditoriaPage'
+import { ColoquiosAlumnoPage } from '@/features/alumno/pages/ColoquiosAlumnoPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,10 +58,15 @@ export default function App() {
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Protected routes — AuthGuard + AppShell */}
             <Route element={<AuthGuard><AppShell /></AuthGuard>}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/perfil" element={<PerfilPage />} />
+              <Route path="/perfil/2fa" element={<TwoFactorEnrollPage />} />
+              <Route path="/inbox" element={<InboxPage />} />
 
               {/* Comision — PROFESOR/TUTOR/COORDINADOR/ADMIN */}
               <Route path="/comision" element={<AuthGuard requiredRoles={['PROFESOR', 'TUTOR', 'COORDINADOR', 'ADMIN']}><ComisionIndexPage /></AuthGuard>} />
@@ -72,8 +85,10 @@ export default function App() {
                 <Route index element={<Navigate to="equipos" replace />} />
                 <Route path="equipos" element={<EquiposPage />} />
                 <Route path="avisos" element={<AvisosPage />} />
-                <Route path="tareas" element={<TareasPage />} />
-                <Route path="monitor" element={<MonitorGlobalPage />} />
+              <Route path="tareas" element={<TareasPage />} />
+              <Route path="programas" element={<ProgramasPage />} />
+              <Route path="fechas" element={<FechasPage />} />
+              <Route path="monitor" element={<MonitorGlobalPage />} />
                 <Route path="encuentros" element={<EncuentrosPage />} />
                 <Route path="coloquios" element={<ColoquiosPage />} />
                 <Route path="cuatrimestre" element={<CuatrimestrePage />} />
@@ -97,6 +112,9 @@ export default function App() {
                 <Route path="usuarios" element={<UsuariosPage />} />
                 <Route path="auditoria" element={<AuditoriaPage />} />
               </Route>
+
+              {/* Alumno — ALUMNO */}
+              <Route path="/alumno/coloquios" element={<AuthGuard requiredRoles={['ALUMNO']}><ColoquiosAlumnoPage /></AuthGuard>} />
 
               {/* Redirect root to dashboard */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

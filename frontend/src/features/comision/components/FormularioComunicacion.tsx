@@ -38,7 +38,11 @@ export function FormularioComunicacion({ materiaId, entradaPadronIds, destinatar
 
   const previewMut = useMutation<PreviewComunicacion, Error, FormValues>({
     mutationFn: (values) =>
-      previewComunicacion({ asunto: values.asunto, cuerpo: values.cuerpo }),
+      previewComunicacion({
+        asunto: values.asunto,
+        cuerpo: values.cuerpo,
+        variables: { nombre: 'Nombre Apellido', materia: 'Nombre de materia' },
+      }),
   })
 
   const encolarMut = useMutation<EncolarResponse, Error, FormValues>({
@@ -86,14 +90,14 @@ export function FormularioComunicacion({ materiaId, entradaPadronIds, destinatar
         <label htmlFor="cuerpo" className="block text-sm font-medium text-gray-700">
           Cuerpo{' '}
           <span className="text-xs text-gray-400">
-            (usá {'{{nombre}}'}, {'{{materia}}'} para variables)
+            (escribí <strong>NOMBRE</strong> y <strong>MATERIA</strong> en mayúsculas para personalizar)
           </span>
         </label>
         <textarea
           id="cuerpo"
           rows={6}
           {...register('cuerpo')}
-          placeholder="Estimado {{nombre}}, te recordamos que..."
+          placeholder="Estimado NOMBRE, te recordamos que..."
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
         />
         {errors.cuerpo && (

@@ -57,6 +57,7 @@ class SessionResponse(BaseModel):
 class ChallengeResponse(BaseModel):
     model_config = _FORBID
     challenge_token: str
+    challenge: str = "2fa_required"
     totp_required: bool = True
 
 
@@ -166,6 +167,7 @@ async def get_me(
         "full_name": full_name,
         "tenant_id": str(current_user.tenant_id),
         "roles": current_user.roles,
+        "totp_activo": usuario.totp_activo,
     }
 
 
@@ -226,15 +228,6 @@ async def login(
         access_token=tokens.access_token,
         refresh_token=tokens.refresh_token,
     )
-
-
-@router.post("/login", status_code=status.HTTP_200_OK, include_in_schema=False)
-async def _login_202(
-    body: LoginRequest,
-    request: Request,
-    session: DBSession,
-) -> Any:
-    """Handled above — the 202 case returns from the same endpoint."""
 
 
 @router.post("/2fa/verify", status_code=status.HTTP_200_OK, response_model=SessionResponse)

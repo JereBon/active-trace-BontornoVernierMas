@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useAtrasados } from '../hooks/useAtrasados'
 import { FormularioComunicacion } from '../components/FormularioComunicacion'
 import { TrackingLotePanel } from '../components/TrackingLotePanel'
@@ -117,6 +118,8 @@ interface LoteRowProps {
 }
 
 function LoteRow({ lote, onAprobar, onCancelar, onVer, loadingAprobar, loadingCancelar }: LoteRowProps) {
+  const { user } = useAuth()
+  const puedeAprobar = user?.roles?.some((r) => r === 'COORDINADOR' || r === 'ADMIN')
   const fecha = new Date(lote.created_at).toLocaleString('es-AR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -141,9 +144,14 @@ function LoteRow({ lote, onAprobar, onCancelar, onVer, loadingAprobar, loadingCa
               <span className="ml-1 text-red-600">{lote.errores} errores</span>
             )}
           </p>
-          {necesitaAprobacion && (
+          {necesitaAprobacion && puedeAprobar && (
             <p className="text-xs text-orange-600 font-medium">
               ⚠ Requiere aprobación antes de enviarse
+            </p>
+          )}
+          {necesitaAprobacion && !puedeAprobar && (
+            <p className="text-xs text-orange-600 font-medium">
+              ⚠ Pendiente de aprobación por el coordinador
             </p>
           )}
         </div>
@@ -155,7 +163,7 @@ function LoteRow({ lote, onAprobar, onCancelar, onVer, loadingAprobar, loadingCa
           >
             Ver detalle
           </button>
-          {necesitaAprobacion && (
+          {necesitaAprobacion && puedeAprobar && (
             <button
               onClick={onAprobar}
               disabled={loadingAprobar}
@@ -164,7 +172,7 @@ function LoteRow({ lote, onAprobar, onCancelar, onVer, loadingAprobar, loadingCa
               {loadingAprobar ? '…' : 'Aprobar'}
             </button>
           )}
-          {hayPendientes && (
+          {hayPendientes && puedeAprobar && (
             <button
               onClick={onCancelar}
               disabled={loadingCancelar}

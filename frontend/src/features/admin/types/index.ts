@@ -7,7 +7,7 @@ export interface Carrera {
   id: string
   nombre: string
   codigo: string
-  activa: boolean
+  estado: string
   tenant_id: string
   created_at: string
 }
@@ -20,30 +20,36 @@ export interface CarreraCreate {
 export interface CarreraUpdate {
   nombre?: string
   codigo?: string
-  activa?: boolean
+  estado?: string
 }
 
 export interface Cohorte {
   id: string
   carrera_id: string
   carrera_nombre: string | null
+  nombre: string
   anio: number
-  plan: string | null
-  activa: boolean
+  vig_desde: string
+  vig_hasta: string | null
+  estado: string
   tenant_id: string
   created_at: string
 }
 
 export interface CohorteCreate {
   carrera_id: string
+  nombre: string
   anio: number
-  plan?: string | null
+  vig_desde: string
+  vig_hasta?: string | null
 }
 
 export interface CohorteUpdate {
+  nombre?: string
   anio?: number
-  plan?: string | null
-  activa?: boolean
+  vig_desde?: string
+  vig_hasta?: string | null
+  estado?: string
 }
 
 export interface Materia {
@@ -51,7 +57,7 @@ export interface Materia {
   nombre: string
   codigo: string
   categoria_clave: string | null
-  activa: boolean
+  estado: string
   tenant_id: string
   created_at: string
 }
@@ -66,7 +72,7 @@ export interface MateriaUpdate {
   nombre?: string
   codigo?: string
   categoria_clave?: string | null
-  activa?: boolean
+  estado?: string
 }
 
 // ─── Usuarios del Tenant ──────────────────────────────────────────────────────
@@ -83,6 +89,16 @@ export interface Usuario {
   activo: boolean
   tenant_id: string
   created_at: string
+}
+
+export interface UsuarioCreate {
+  email: string
+  password: string
+  nombre?: string | null
+  apellidos?: string | null
+  dni?: string | null
+  cuil?: string | null
+  roles?: RolUsuario[]
 }
 
 export interface UsuarioActivarToggle {

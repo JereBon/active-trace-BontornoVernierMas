@@ -39,6 +39,13 @@ const CARDS: QuickCard[] = [
     roles: ['ADMIN'],
     color: 'border-red-200 hover:border-red-400',
   },
+  {
+    title: 'Coloquios',
+    description: 'Reservá tu turno para los coloquios disponibles.',
+    path: '/alumno/coloquios',
+    roles: ['ALUMNO'],
+    color: 'border-teal-200 hover:border-teal-400',
+  },
 ]
 
 export function DashboardPage() {

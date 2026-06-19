@@ -4,7 +4,7 @@ import { NavLink, Outlet, useParams } from 'react-router-dom'
 
 const NAV_ITEMS = [
   { to: 'padron', label: 'Padrón' },
-  { to: 'importacion', label: 'Importación' },
+  { to: 'importacion', label: 'Calificaciones' },
   { to: 'atrasados', label: 'Análisis' },
   { to: 'sin-corregir', label: 'Sin corregir' },
   { to: 'comunicacion', label: 'Comunicaciones' },

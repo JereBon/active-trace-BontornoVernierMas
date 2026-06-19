@@ -48,6 +48,8 @@ services:
     environment:
       # Override DATABASE_URL to use the compose service name
       DATABASE_URL: postgresql+asyncpg://activia:changeme@postgres:5432/activia_trace
+      SMTP_HOST: mailhog
+      EMAIL_BACKEND: smtp
     ports:
       - "8000:8000"
     healthcheck:
@@ -56,6 +58,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  # ── Mailhog (SMTP catcher for dev) ──────────────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    logging:
+      driver: "none"  # suppress mailhog's own verbose logs
 
   # ── Worker ──────────────────────────────────────────────────────────────────
   worker:

@@ -39,6 +39,7 @@ class MateriaService:
             {
                 "codigo": data.codigo,
                 "nombre": data.nombre,
+                "categoria_clave": data.categoria_clave,
                 "estado": data.estado.value,
             }
         )
@@ -75,6 +76,8 @@ class MateriaService:
             update_dict["codigo"] = data.codigo
         if data.nombre is not None:
             update_dict["nombre"] = data.nombre
+        if data.categoria_clave is not None:
+            update_dict["categoria_clave"] = data.categoria_clave
         if data.estado is not None:
             update_dict["estado"] = data.estado.value
 

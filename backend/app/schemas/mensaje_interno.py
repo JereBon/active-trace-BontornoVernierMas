@@ -48,3 +48,21 @@ class MensajeInternoOut(BaseModel):
     hilo_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
+    respuestas: list["MensajeInternoOut"] = []
+
+
+class MensajeInternoOutSimple(BaseModel):
+    """Response schema without replies (for listing)."""
+
+    model_config = _FORBID_FROM_ATTRS
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    remitente_id: uuid.UUID
+    destinatario_id: uuid.UUID
+    asunto: str
+    cuerpo: str
+    leido: bool
+    hilo_id: Optional[uuid.UUID] = None
+    created_at: datetime
+    updated_at: datetime

@@ -37,6 +37,7 @@ class UsuarioCreate(BaseModel):
     legajo: Optional[str] = Field(default=None, max_length=50, description="Institutional record number")
     legajo_profesional: Optional[str] = Field(default=None, max_length=50, description="Professional registry number")
     facturador: Optional[bool] = Field(default=None, description="True if user issues invoices")
+    roles: list[str] = Field(default_factory=list, description="Role codes to assign (e.g. ['PROFESOR'])")
 
 
 class UsuarioUpdate(BaseModel):
@@ -76,6 +77,7 @@ class UsuarioOut(BaseModel):
     legajo_profesional: Optional[str] = None
     facturador: Optional[bool] = None
     activo: bool
+    roles: list[str] = Field(default_factory=list, description="Active role codes")
     created_at: datetime
     updated_at: datetime
 
@@ -91,4 +93,5 @@ class UsuarioListItem(BaseModel):
     apellidos: Optional[str] = None
     legajo: Optional[str] = None
     activo: bool
+    roles: list[str] = Field(default_factory=list, description="Active role codes")
     created_at: datetime

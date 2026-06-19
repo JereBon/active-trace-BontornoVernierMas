@@ -1,7 +1,10 @@
 // features/comision/pages/ComisionIndexPage.tsx
 // Selector de materia para entrar al módulo Comisión
+// Muestra solo las materias asignadas al docente actual
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/hooks/useAuth'
 import { api } from '@/shared/services/api'
 
 interface Materia {
@@ -10,17 +13,46 @@ interface Materia {
   codigo: string
 }
 
+interface Asignacion {
+  id: string
+  materia_id: string
+  materia_nombre?: string
+  rol: string
+}
+
 async function getMaterias(): Promise<Materia[]> {
   const { data } = await api.get<Materia[]>('/v1/materias')
   return data
 }
 
+async function getMisAsignaciones(): Promise<Asignacion[]> {
+  const { data } = await api.get<Asignacion[]>('/v1/equipos/mis-asignaciones')
+  return data
+}
+
 export function ComisionIndexPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const esCoordinadorOAdmin = user?.roles?.some((r) => r === 'COORDINADOR' || r === 'ADMIN')
   const { data: materias = [], isLoading, error } = useQuery({
     queryKey: ['materias-selector'],
     queryFn: getMaterias,
   })
+  const { data: asignaciones = [] } = useQuery({
+    queryKey: ['mis-asignaciones'],
+    queryFn: getMisAsignaciones,
+  })
+
+  const materiaIdsAsignadas = useMemo(
+    () => new Set(asignaciones.map((a) => a.materia_id)),
+    [asignaciones],
+  )
+
+  const materiasVisibles = useMemo(() => {
+    if (esCoordinadorOAdmin) return materias
+    if (materiaIdsAsignadas.size === 0) return materias
+    return materias.filter((m) => materiaIdsAsignadas.has(m.id))
+  }, [materias, materiaIdsAsignadas, esCoordinadorOAdmin])
 
   if (isLoading) {
     return (
@@ -35,16 +67,16 @@ export function ComisionIndexPage() {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">Comisión</h1>
-        <p className="text-red-500 text-sm">No se pudieron cargar las materias. Verificá que tengas permisos de estructura.</p>
+        <p className="text-red-500 text-sm">No se pudieron cargar las materias.</p>
       </div>
     )
   }
 
-  if (materias.length === 0) {
+  if (materiasVisibles.length === 0) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">Comisión</h1>
-        <p className="text-gray-400 text-sm">No hay materias disponibles. Creá una en Admin → Estructura.</p>
+        <p className="text-gray-500 text-sm">No tenés materias asignadas. Contactá a tu coordinador para que te asigne una.</p>
       </div>
     )
   }
@@ -57,7 +89,7 @@ export function ComisionIndexPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {materias.map((m) => (
+        {materiasVisibles.map((m) => (
           <button
             key={m.id}
             onClick={() => navigate(`/comision/${m.id}/atrasados`)}

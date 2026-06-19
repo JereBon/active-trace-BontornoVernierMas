@@ -24,8 +24,9 @@ const carreraSchema = z.object({
 
 const cohorteSchema = z.object({
   carrera_id: z.string().uuid('UUID inválido'),
+  nombre: z.string().min(1, 'Requerido'),
   anio: z.coerce.number().min(2000).max(2100),
-  plan: z.string().optional(),
+  vig_desde: z.string().min(1, 'Requerido'),
 }).strict()
 
 const materiaSchema = z.object({
@@ -59,9 +60,9 @@ function TablaCarreras({ rows }: { rows: Carrera[] }) {
               <td className="py-3 px-4 text-sm text-gray-600">{c.codigo}</td>
               <td className="py-3 px-4 text-sm">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                  c.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  c.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {c.activa ? 'Activa' : 'Inactiva'}
+                  {c.estado === 'Activa' ? 'Activa' : 'Inactiva'}
                 </span>
               </td>
             </tr>
@@ -107,7 +108,7 @@ function FormCarrera({ onClose }: { onClose: () => void }) {
 
 // ─── Tabla Cohortes ───────────────────────────────────────────────────────────
 
-function TablaCohortes({ rows }: { rows: Cohorte[] }) {
+function TablaCohortes({ rows, carreras }: { rows: Cohorte[]; carreras: Carrera[] }) {
   if (rows.length === 0) return <p className="text-sm text-gray-400">Sin cohortes registradas.</p>
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -115,22 +116,22 @@ function TablaCohortes({ rows }: { rows: Cohorte[] }) {
         <thead className="bg-gray-50">
           <tr>
             <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Carrera</th>
+            <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Nombre</th>
             <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Año</th>
-            <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Plan</th>
             <th className="py-3 px-4 text-xs font-semibold uppercase text-gray-500">Estado</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((c) => (
             <tr key={c.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-              <td className="py-3 px-4 text-sm text-gray-900">{c.carrera_nombre ?? c.carrera_id}</td>
-              <td className="py-3 px-4 text-sm text-gray-900">{c.anio}</td>
-              <td className="py-3 px-4 text-sm text-gray-600">{c.plan ?? '—'}</td>
+              <td className="py-3 px-4 text-sm text-gray-900">{carreras.find((cr) => cr.id === c.carrera_id)?.nombre ?? c.carrera_id.slice(0, 8)}</td>
+              <td className="py-3 px-4 text-sm text-gray-900">{c.nombre}</td>
+              <td className="py-3 px-4 text-sm text-gray-600">{c.anio}</td>
               <td className="py-3 px-4 text-sm">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                  c.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  c.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {c.activa ? 'Activa' : 'Inactiva'}
+                  {c.estado === 'Activa' ? 'Activa' : 'Inactiva'}
                 </span>
               </td>
             </tr>
@@ -158,11 +159,16 @@ function FormCohorte({ onClose }: { onClose: () => void }) {
           <label className="block text-xs font-medium text-gray-600">Carrera</label>
           <select {...register('carrera_id')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="">Seleccioná una carrera…</option>
-            {carreras.filter((c) => c.activa).map((c) => (
+            {carreras.filter((c) => c.estado === 'Activa').map((c) => (
               <option key={c.id} value={c.id}>{c.nombre} ({c.codigo})</option>
             ))}
           </select>
           {errors.carrera_id && <p className="mt-1 text-xs text-red-500">{errors.carrera_id.message}</p>}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600">Nombre</label>
+          <input {...register('nombre')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          {errors.nombre && <p className="mt-1 text-xs text-red-500">{errors.nombre.message}</p>}
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600">Año</label>
@@ -170,8 +176,9 @@ function FormCohorte({ onClose }: { onClose: () => void }) {
           {errors.anio && <p className="mt-1 text-xs text-red-500">{errors.anio.message}</p>}
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">Plan</label>
-          <input {...register('plan')} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          <label className="block text-xs font-medium text-gray-600">Vigencia desde</label>
+          <input {...register('vig_desde')} type="date" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          {errors.vig_desde && <p className="mt-1 text-xs text-red-500">{errors.vig_desde.message}</p>}
         </div>
       </div>
       <div className="flex justify-end gap-2">
@@ -207,9 +214,9 @@ function TablaMaterias({ rows }: { rows: Materia[] }) {
               <td className="py-3 px-4 text-sm text-gray-600">{m.categoria_clave ?? '—'}</td>
               <td className="py-3 px-4 text-sm">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                  m.activa ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  m.estado === 'Activa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {m.activa ? 'Activa' : 'Inactiva'}
+                  {m.estado === 'Activa' ? 'Activa' : 'Inactiva'}
                 </span>
               </td>
             </tr>
@@ -293,7 +300,7 @@ export function EstructuraAcademica() {
           </button>
         </div>
         {showCohorte && <div className="mb-4"><FormCohorte onClose={() => setShowCohorte(false)} /></div>}
-        {lco ? <p className="text-sm text-gray-400">Cargando…</p> : <TablaCohortes rows={cohortes} />}
+        {lco ? <p className="text-sm text-gray-400">Cargando…</p> : <TablaCohortes rows={cohortes} carreras={carreras} />}
       </section>
 
       {/* Materias */}

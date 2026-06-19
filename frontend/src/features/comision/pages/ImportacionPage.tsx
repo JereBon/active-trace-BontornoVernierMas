@@ -62,12 +62,12 @@ export function ImportacionPage() {
 
   return (
     <div className="space-y-8 max-w-2xl">
-      <h2 className="text-lg font-semibold text-gray-900">Importación de calificaciones</h2>
+      <h2 className="text-lg font-semibold text-gray-900">Calificaciones</h2>
 
       {/* Asignacion selector */}
       <div>
         <label htmlFor="asignacion-id" className="block text-sm font-medium text-gray-700">
-          Asignación docente
+          Tu cargo en la materia
         </label>
         {loadingAsig ? (
           <p className="mt-1 text-sm text-gray-400">Cargando asignaciones…</p>
@@ -101,7 +101,7 @@ export function ImportacionPage() {
 
       {!preview && (
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">1. Subir archivo LMS</h3>
+          <h3 className="text-sm font-semibold text-gray-700">1. Subir calificaciones (exportación de Moodle)</h3>
           <p className="text-xs text-gray-500">
             El archivo debe ser el export de calificaciones de Moodle (.xlsx o .csv).
             Debe contener una columna <strong>Email address</strong> y columnas de notas con

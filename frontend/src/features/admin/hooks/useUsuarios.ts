@@ -1,11 +1,20 @@
 // features/admin/hooks/useUsuarios.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getUsuarios, toggleActivarUsuario } from '../services/usuariosService'
+import { getUsuarios, createUsuario, toggleActivarUsuario } from '../services/usuariosService'
+import type { UsuarioCreate } from '../types'
 
 const USUARIOS_KEY = ['admin-usuarios']
 
 export function useUsuarios() {
   return useQuery({ queryKey: USUARIOS_KEY, queryFn: getUsuarios })
+}
+
+export function useCreateUsuario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UsuarioCreate) => createUsuario(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USUARIOS_KEY }),
+  })
 }
 
 export function useToggleActivarUsuario() {

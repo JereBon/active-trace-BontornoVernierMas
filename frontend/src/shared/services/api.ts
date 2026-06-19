@@ -74,6 +74,12 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    // Don't intercept login, 2FA verify, forgot or reset — 401 is expected there
+    const skipUrls = ['/api/auth/login', '/api/auth/2fa/verify', '/api/auth/forgot', '/api/auth/reset']
+    if (skipUrls.some((u) => originalRequest.url?.includes(u))) {
+      return Promise.reject(error)
+    }
+
     // Skip refresh for the refresh endpoint itself to avoid infinite loops
     if (originalRequest.url?.includes('/api/auth/refresh')) {
       clearSession()

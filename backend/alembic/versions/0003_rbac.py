@@ -59,6 +59,7 @@ _ALL_PERMISOS: list[tuple[str, str]] = [
     ("padron:leer", "Ver versiones del padrón de alumnos"),
     ("padron:cargar", "Cargar padrón de alumnos (desde archivo o Moodle)"),
     ("padron:vaciar", "Vaciar el padrón de una materia"),
+    ("facturas:subir_propias", "Subir y ver mis propias facturas"),
 ]
 
 # ── Role → Permission matrix ───────────────────────────────────────────────────
@@ -75,6 +76,7 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "entregas:ver_sin_corregir",
         "encuentros:gestionar",
         "guardias:registrar",
+        "facturas:subir_propias",
     ],
     "PROFESOR": [
         "avisos:confirmar",
@@ -87,6 +89,8 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "tareas:gestionar",
         "padron:leer",
         "padron:cargar",
+        "padron:vaciar",
+        "facturas:subir_propias",
     ],
     "COORDINADOR": [
         "avisos:confirmar",
@@ -125,6 +129,10 @@ _ROLE_PERMISSIONS: dict[str, list[str]] = {
         "estructura:gestionar",
         "usuarios:gestionar",
         "auditoria:ver",
+        "liquidaciones:operar",
+        "liquidaciones:cerrar",
+        "facturas:gestionar",
+        "facturas:subir_propias",
         "tenant:configurar",
         "impersonacion:usar",
         "padron:leer",

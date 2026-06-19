@@ -236,6 +236,23 @@ class EvaluacionRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_reservas_by_alumno(
+        self,
+        alumno_id: uuid.UUID,
+        estado: str | None = None,
+    ) -> list[ReservaEvaluacion]:
+        """Return all active ReservaEvaluacion for an alumno in this tenant."""
+        stmt = select(ReservaEvaluacion).where(
+            ReservaEvaluacion.alumno_id == alumno_id,
+            ReservaEvaluacion.tenant_id == self._tenant_id,
+            ReservaEvaluacion.deleted_at.is_(None),
+        )
+        if estado is not None:
+            stmt = stmt.where(ReservaEvaluacion.estado == estado)
+        stmt = stmt.order_by(ReservaEvaluacion.created_at.desc())
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     # ── Resultado writes ──────────────────────────────────────────────────────
 
     async def create_resultado(

@@ -43,6 +43,34 @@ export function AppShell() {
             </NavLink>
 
             <NavLink
+              to="/perfil"
+              className={({ isActive }) =>
+                [
+                  'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-50 font-medium text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                ].join(' ')
+              }
+            >
+              Mi Perfil
+            </NavLink>
+
+            <NavLink
+              to="/inbox"
+              className={({ isActive }) =>
+                [
+                  'mt-1 flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-50 font-medium text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                ].join(' ')
+              }
+            >
+              Mensajes
+            </NavLink>
+
+            <NavLink
               to="/comision"
               className={({ isActive }) =>
                 [

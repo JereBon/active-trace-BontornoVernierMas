@@ -33,9 +33,14 @@ async def _dispatch_email(destinatario_cifrado: str, asunto: str, cuerpo: str) -
 
     The actual backend is selected via EMAIL_BACKEND env var:
       stub (default) — log and return True (no real email sent)
-      smtp           — (not implemented yet; reserved for future)
+      smtp           — real SMTP send via aiosmtplib
     """
     backend = os.environ.get("EMAIL_BACKEND", "stub").lower()
+    if backend == "smtp":
+        from app.core.crypto import decrypt
+        from app.core.email import send_email
+        to = decrypt(destinatario_cifrado)
+        return await send_email(to, asunto, cuerpo)
     if backend == "stub":
         logger.info(
             "comunicacion_worker [stub] dispatching email asunto=%r",

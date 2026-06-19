@@ -119,10 +119,10 @@ class AuthService:
         usuario = await self._usuario_repo.get_by_email_hash(eh)
 
         if usuario is None or not verify_password(password, usuario.password_hash):
-            raise AuthError("Invalid credentials", code="invalid_credentials")
+            raise AuthError("Credenciales inválidas", code="invalid_credentials")
 
         if not usuario.activo:
-            raise AuthError("User account is inactive", code="inactive_user")
+            raise AuthError("Cuenta de usuario inactiva", code="inactive_user")
 
         # Credentials OK — reset the failure counter
         rate_limiter.reset(rate_key)
@@ -160,10 +160,10 @@ class AuthService:
         try:
             payload = decode_access_token(challenge_token)
         except AuthError:
-            raise AuthError("Invalid or expired challenge token", code="invalid_token")
+            raise AuthError("Token de desafío inválido o expirado", code="invalid_token")
 
         if payload.get("type") != "2fa_challenge":
-            raise AuthError("Token is not a 2FA challenge", code="invalid_token")
+            raise AuthError("El token no es un desafío 2FA", code="invalid_token")
 
         usuario_id = uuid.UUID(payload["sub"])
         tenant_id = uuid.UUID(payload["tenant_id"])
@@ -179,15 +179,15 @@ class AuthService:
         result = await self._session.execute(stmt)
         usuario = result.scalar_one_or_none()
         if usuario is None or not usuario.activo:
-            raise AuthError("User not found or inactive", code="invalid_credentials")
+            raise AuthError("Usuario no encontrado o inactivo", code="invalid_credentials")
 
         if not usuario.totp_secret_cifrado:
-            raise AuthError("2FA not enrolled", code="totp_not_enrolled")
+            raise AuthError("2FA no configurado", code="totp_not_enrolled")
 
         secret = decrypt(usuario.totp_secret_cifrado)
         totp = pyotp.TOTP(secret)
         if not totp.verify(totp_code, valid_window=1):
-            raise AuthError("Invalid TOTP code", code="invalid_totp")
+            raise AuthError("Código TOTP inválido", code="invalid_totp")
 
         return await self._issue_session(usuario_id, tenant_id)
 
@@ -205,16 +205,16 @@ class AuthService:
         db_token = await self._rt_repo.get_by_hash(token_hash)
 
         if db_token is None:
-            raise AuthError("Invalid refresh token", code="invalid_token")
+            raise AuthError("Token de refresco inválido", code="invalid_token")
 
         # Reuse detection
         if db_token.revoked_at is not None:
             await self._rt_repo.revoke_all_for_user(db_token.usuario_id)
             await self._session.commit()
-            raise AuthError("Refresh token reuse detected", code="token_reuse")
+            raise AuthError("Reuso de token de refresco detectado", code="token_reuse")
 
         if db_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(tz=timezone.utc):
-            raise AuthError("Refresh token expired", code="token_expired")
+            raise AuthError("Token de refresco expirado", code="token_expired")
 
         # Revoke the old token immediately (rotation)
         await self._rt_repo.revoke(db_token.id)
@@ -253,7 +253,7 @@ class AuthService:
         """
         usuario = await self._usuario_repo.get(usuario_id)
         if usuario is None:
-            raise AuthError("User not found", code="not_found")
+            raise AuthError("Usuario no encontrado", code="not_found")
 
         secret = pyotp.random_base32()
         totp = pyotp.TOTP(secret)
@@ -285,10 +285,10 @@ class AuthService:
         """
         usuario = await self._usuario_repo.get(usuario_id)
         if usuario is None:
-            raise AuthError("User not found", code="not_found")
+            raise AuthError("Usuario no encontrado", code="not_found")
 
         if not usuario.totp_secret_cifrado:
-            raise AuthError("TOTP not enrolled — call /2fa/enroll first", code="totp_not_enrolled")
+            raise AuthError("TOTP no configurado — ejecutá /2fa/enroll primero", code="totp_not_enrolled")
 
         secret = decrypt(usuario.totp_secret_cifrado)
         totp = pyotp.TOTP(secret)
@@ -302,7 +302,7 @@ class AuthService:
     # ── Password recovery ─────────────────────────────────────────────────────
 
     async def forgot_password(self, email: str, dev_mode: bool = False) -> str | None:
-        """Generate a single-use password reset token.
+        """Generate a single-use password reset token and send it via email.
 
         To prevent user enumeration, always returns HTTP 200 regardless of
         whether the email exists.
@@ -310,7 +310,6 @@ class AuthService:
         Args:
             email:    Email address submitted by the user.
             dev_mode: If True, returns the raw token in the response (for tests).
-                      In production, the token would be sent by email.
 
         Returns:
             Raw token string in dev_mode, None otherwise.
@@ -331,15 +330,33 @@ class AuthService:
             expires_at=expires_at,
         )
 
+        # Send the reset link via email
+        from app.core.config import get_settings
+        settings = get_settings()
+        plain_email = decrypt(usuario.email_cifrado)
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+        html_body = (
+            f"<h2>Restablecer contraseña</h2>"
+            f"<p>Hacé clic en el siguiente enlace para restablecer tu contraseña:</p>"
+            f"<p><a href=\"{reset_link}\">Restablecer contraseña</a></p>"
+            f"<p>Este enlace expira en 15 minutos.</p>"
+            f"<p>Si no solicitaste este cambio, ignorá este mensaje.</p>"
+        )
+
+        if settings.EMAIL_BACKEND == "smtp":
+            from app.core.email import send_email
+            await send_email(plain_email, "Restablecer tu contraseña", html_body)
+        else:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(
+                "Password reset token generated for %s — link=%s",
+                plain_email, reset_link,
+            )
+
         if dev_mode:
             return raw_token
 
-        # Production: log the token (SMTP email infrastructure is out of scope for C-03)
-        import logging
-        logging.getLogger(__name__).info(
-            "Password reset token generated (no SMTP configured)",
-            extra={"usuario_id": str(usuario.id)},
-        )
         return None
 
     async def reset_password(self, token: str, new_password: str) -> None:
@@ -356,13 +373,27 @@ class AuthService:
         db_token = await self._prt_repo.get_valid_by_hash(token_hash)
 
         if db_token is None:
-            raise AuthError("Invalid or expired reset token", code="invalid_reset_token")
+            raise AuthError("Token de restablecimiento inválido o expirado", code="invalid_reset_token")
 
         # Mark consumed BEFORE updating password — prevents race condition
         await self._prt_repo.mark_used(db_token.id)
 
+        # Look up the user to get their actual tenant_id (the service tenant may be
+        # nil UUID for anon endpoints, but BaseRepository.get/update scope by tenant)
+        from sqlalchemy import select as _select
+        from app.models.usuario import Usuario as _Usuario
+        stmt = _select(_Usuario).where(
+            _Usuario.id == db_token.usuario_id,
+            _Usuario.deleted_at.is_(None),
+        )
+        result = await self._session.execute(stmt)
+        usuario = result.scalar_one_or_none()
+        if usuario is None:
+            raise AuthError("Usuario no encontrado", code="not_found")
+
         new_hash = hash_password(new_password)
-        await self._usuario_repo.update(db_token.usuario_id, {"password_hash": new_hash})
+        user_repo = UsuarioRepository(self._session, usuario.tenant_id)
+        await user_repo.update(db_token.usuario_id, {"password_hash": new_hash})
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 

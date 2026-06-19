@@ -51,6 +51,45 @@ router = APIRouter(
 )
 
 
+# ── Disponibles (ALUMNO) ─────────────────────────────────────────────────────
+
+
+@router.get(
+    "/disponibles",
+    response_model=list[EvaluacionOut],
+    dependencies=[Depends(require_permission(EVALUACIONES_RESERVAR))],
+    summary="Listar coloquios abiertos con cupos disponibles (ALUMNO)",
+)
+async def list_coloquios_disponibles(
+    session: DBSession,
+    current_user: CurrentUser,
+) -> list[EvaluacionOut]:
+    """Return open Evaluacion records with remaining cupos (F7.4 for ALUMNO)."""
+    repo = EvaluacionRepository(session, current_user.tenant_id)
+    items = await repo.list_evaluaciones(estado="Abierta")
+    with_cupos = [e for e in items if (e.cupos_disponibles or 0) > 0]
+    return [EvaluacionOut.model_validate(e) for e in with_cupos]
+
+
+# ── Mis reservas (ALUMNO) ────────────────────────────────────────────────────
+
+
+@router.get(
+    "/mis-reservas",
+    response_model=list[ReservaOut],
+    dependencies=[Depends(require_permission(EVALUACIONES_RESERVAR))],
+    summary="Listar mis propias reservas activas (ALUMNO)",
+)
+async def list_mis_reservas(
+    session: DBSession,
+    current_user: CurrentUser,
+) -> list[ReservaOut]:
+    """Return active reservations for the current authenticated user."""
+    repo = EvaluacionRepository(session, current_user.tenant_id)
+    reservas = await repo.list_reservas_by_alumno(current_user.id)
+    return [ReservaOut.model_validate(r) for r in reservas]
+
+
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
 

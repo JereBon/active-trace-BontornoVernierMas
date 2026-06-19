@@ -16,3 +16,10 @@ export async function updateInstancia(id: string, payload: InstanciaUpdate): Pro
   const { data } = await api.patch<InstanciaEncuentro>(`/v1/encuentros/${id}`, payload)
   return data
 }
+
+export async function exportarHtmlEncuentros(materiaId?: string): Promise<string> {
+  const params: Record<string, string> = {}
+  if (materiaId) params.materia_id = materiaId
+  const { data } = await api.get('/v1/encuentros/html', { params, responseType: 'text' })
+  return data
+}

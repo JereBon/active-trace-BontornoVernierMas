@@ -30,6 +30,19 @@ class FacturaEstadoUpdate(BaseModel):
     estado: str = Field(..., description="New state: Pendiente | Abonada.")
 
 
+class FacturaMiaCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    periodo: str = Field(
+        ...,
+        pattern=r"^\d{4}-\d{2}$",
+        description="Billing period AAAA-MM.",
+    )
+    detalle: str | None = Field(None, description="Free-form description.")
+    referencia_archivo: str | None = Field(None, description="File reference (name/path).")
+    tamano_kb: Decimal | None = Field(None, description="File size in kilobytes.")
+
+
 class FacturaOut(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 

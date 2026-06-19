@@ -61,6 +61,7 @@ LIQUIDACIONES_CERRAR = "liquidaciones:cerrar"
 
 # ── Facturas ──────────────────────────────────────────────────────────────────
 FACTURAS_GESTIONAR = "facturas:gestionar"
+FACTURAS_SUBIR_PROPIAS = "facturas:subir_propias"
 
 # ── Tenant ────────────────────────────────────────────────────────────────────
 TENANT_CONFIGURAR = "tenant:configurar"
@@ -99,6 +100,7 @@ ALL_PERMISOS: frozenset[str] = frozenset(
         LIQUIDACIONES_OPERAR,
         LIQUIDACIONES_CERRAR,
         FACTURAS_GESTIONAR,
+        FACTURAS_SUBIR_PROPIAS,
         TENANT_CONFIGURAR,
         IMPERSONACION_USAR,
         PADRON_LEER,

@@ -129,6 +129,28 @@ class MensajeInternoRepository(BaseRepository[MensajeInterno]):
         await self._session.refresh(instance)
         return instance
 
+    # ── Thread ───────────────────────────────────────────────────────────────
+
+    async def get_thread(
+        self, hilo_id: uuid.UUID, user_id: uuid.UUID
+    ) -> list[MensajeInterno]:
+        """Return all messages in a thread visible to the user."""
+        stmt = (
+            select(MensajeInterno)
+            .where(
+                MensajeInterno.tenant_id == self._tenant_id,
+                MensajeInterno.deleted_at.is_(None),
+                MensajeInterno.hilo_id == hilo_id,
+                or_(
+                    MensajeInterno.remitente_id == user_id,
+                    MensajeInterno.destinatario_id == user_id,
+                ),
+            )
+            .order_by(MensajeInterno.created_at.asc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def enviar(
         self,
         remitente_id: uuid.UUID,

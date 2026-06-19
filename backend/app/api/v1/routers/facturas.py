@@ -14,9 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.dependencies import CurrentUser, DBSession
 from app.core.exceptions import NotFoundError
-from app.core.permisos import FACTURAS_GESTIONAR
+from app.core.permisos import FACTURAS_GESTIONAR, FACTURAS_SUBIR_PROPIAS
 from app.core.rbac import require_permission
-from app.schemas.factura import FacturaCreate, FacturaEstadoUpdate, FacturaOut
+from app.schemas.factura import FacturaCreate, FacturaEstadoUpdate, FacturaMiaCreate, FacturaOut
 from app.services.factura_service import FacturaService
 
 router = APIRouter(
@@ -25,6 +25,48 @@ router = APIRouter(
 )
 
 _PERM_GESTIONAR = Depends(require_permission(FACTURAS_GESTIONAR))
+_PERM_SUBIR_PROPIAS = Depends(require_permission(FACTURAS_SUBIR_PROPIAS))
+
+
+# ── GET /mias — own invoices ─────────────────────────────────────────────────
+
+
+@router.get(
+    "/mias",
+    response_model=list[FacturaOut],
+    dependencies=[_PERM_SUBIR_PROPIAS],
+    summary="Listar mis propias facturas (PROFESOR/TUTOR)",
+)
+async def listar_mis_facturas(
+    session: DBSession,
+    current_user: CurrentUser,
+) -> list[FacturaOut]:
+    svc = FacturaService(session, current_user.tenant_id)
+    records = await svc.listar(usuario_id=current_user.user_id)
+    return [FacturaOut.model_validate(r) for r in records]
+
+
+# ── POST /mias — create own invoice ──────────────────────────────────────────
+
+
+@router.post(
+    "/mias",
+    response_model=FacturaOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_PERM_SUBIR_PROPIAS],
+    summary="Subir mi propia factura (PROFESOR/TUTOR)",
+)
+async def crear_mi_factura(
+    body: FacturaMiaCreate,
+    session: DBSession,
+    current_user: CurrentUser,
+) -> FacturaOut:
+    svc = FacturaService(session, current_user.tenant_id)
+    record = await svc.crear({
+        **body.model_dump(),
+        "usuario_id": current_user.user_id,
+    })
+    return FacturaOut.model_validate(record)
 
 
 # ── GET / ─────────────────────────────────────────────────────────────────────

@@ -180,6 +180,7 @@ async def seed(eng):
             (UC, "Carmen", "Coordinadora", "coordinador@demo.edu", "COORDINADOR"),
             (UP, "Pablo",  "Profesor",     "profesor@demo.edu",    "PROFESOR"),
             (UT, "Tomás",  "Tutor",        "tutor@demo.edu",       "TUTOR"),
+            (nid(), "Jeremías", "Bontorno", "jeremiasbontorno5@gmail.com", "ADMIN"),
         ]
         for uid_, nombre, apellidos, email, rol_c in users:
             await c.execute(sa.text("""

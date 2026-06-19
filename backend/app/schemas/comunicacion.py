@@ -33,18 +33,31 @@ def _mask_email(email: str) -> str:
 
 
 def _render_template(template: str, variables: dict[str, str]) -> str:
-    """Render a template string by replacing {{key}} placeholders.
+    """Render a template by replacing {{key}}, [KEY], or KEY (all caps).
+
+    All formats are case-insensitive: {{NOMBRE}}, [nombre], NOMBRE all work.
 
     Raises ValueError listing all missing keys if any placeholder has no value.
     """
-    # Find all placeholders
-    placeholders = re.findall(r"\{\{(\w+)\}\}", template)
-    missing = [p for p in placeholders if p not in variables]
+    # Find all placeholder references in any format
+    curly = re.findall(r"\{\{(\w+)\}\}", template)
+    bracket = re.findall(r"\[(\w+)\]", template)
+    bare = re.findall(r"\b([A-Z]{2,})\b", template)
+
+    # Normalize all found keys to lowercase for case-insensitive matching
+    all_keys = [k.lower() for k in curly + bracket + bare]
+    missing = [p for p in all_keys if p not in variables]
     if missing:
         raise ValueError(f"Missing template variables: {', '.join(missing)}")
     result = template
     for key, value in variables.items():
+        upper = key.upper()
+        # Handle all formats
         result = result.replace(f"{{{{{key}}}}}", value)
+        result = result.replace(f"{{{{{upper}}}}}", value)
+        result = result.replace(f"[{key}]", value)
+        result = result.replace(f"[{upper}]", value)
+        result = re.sub(rf"\b{upper}\b", value, result)
     return result
 
 

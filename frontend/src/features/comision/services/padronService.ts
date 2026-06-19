@@ -43,3 +43,8 @@ export async function listarVersionesPadron(materiaId: string): Promise<VersionP
   const { data } = await api.get<VersionPadron[]>(`/v1/padron/materia/${materiaId}`)
   return data
 }
+
+export async function vaciarPadron(materiaId: string): Promise<{ filas_afectadas: number; message: string }> {
+  const { data } = await api.delete(`/v1/padron/materia/${materiaId}`)
+  return data
+}

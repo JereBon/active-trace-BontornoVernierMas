@@ -20,6 +20,7 @@ class MateriaCreate(BaseModel):
 
     codigo: str = Field(..., min_length=1, max_length=50, description="Código único de la materia (ej: PROG_I)")
     nombre: str = Field(..., min_length=1, max_length=200, description="Nombre completo de la materia")
+    categoria_clave: str | None = Field(default=None, description="Clave para grupo de plus salarial (ej: PROG)")
     estado: EstadoEntidad = Field(default=EstadoEntidad.Activa)
 
 
@@ -30,6 +31,7 @@ class MateriaUpdate(BaseModel):
 
     codigo: str | None = Field(default=None, min_length=1, max_length=50)
     nombre: str | None = Field(default=None, min_length=1, max_length=200)
+    categoria_clave: str | None = Field(default=None)
     estado: EstadoEntidad | None = None
 
 
@@ -42,6 +44,7 @@ class MateriaOut(BaseModel):
     tenant_id: uuid.UUID
     codigo: str
     nombre: str
+    categoria_clave: str | None
     estado: str
     created_at: datetime
     updated_at: datetime

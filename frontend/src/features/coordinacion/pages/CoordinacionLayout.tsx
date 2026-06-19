@@ -5,6 +5,8 @@ const TAB_ITEMS = [
   { to: '/coordinacion/equipos', label: 'Equipos' },
   { to: '/coordinacion/avisos', label: 'Avisos' },
   { to: '/coordinacion/tareas', label: 'Tareas' },
+  { to: '/coordinacion/programas', label: 'Programas' },
+  { to: '/coordinacion/fechas', label: 'Fechas' },
   { to: '/coordinacion/monitor', label: 'Monitor' },
   { to: '/coordinacion/encuentros', label: 'Encuentros' },
   { to: '/coordinacion/coloquios', label: 'Coloquios' },

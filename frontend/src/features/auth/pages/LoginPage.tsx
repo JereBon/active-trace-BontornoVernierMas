@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { isAxiosError } from 'axios'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { TwoFaChallengePlaceholder } from '@/features/auth/components/TwoFaChallengePlaceholder'
 import { Spinner } from '@/shared/components/Spinner'
@@ -63,8 +64,13 @@ export function LoginPage() {
       await login(values)
       // navigation happens via the useEffect above once isAuthenticated becomes true
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Error al iniciar sesión'
+      let message = 'Error al iniciar sesión'
+      if (isAxiosError(err) && err.response?.data && typeof err.response.data === 'object') {
+        const detail = (err.response.data as Record<string, unknown>).detail
+        message = typeof detail === 'string' ? detail : message
+      } else if (err instanceof Error) {
+        message = err.message
+      }
       setError('root', { message })
     }
   }
@@ -121,6 +127,15 @@ export function LoginPage() {
               {errors.password && (
                 <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
               )}
+            </div>
+
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-brand-600 hover:text-brand-700"
+              >
+                Olvidé mi contraseña
+              </Link>
             </div>
 
             {/* Server error */}

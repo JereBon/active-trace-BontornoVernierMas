@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
 
+    # ── Frontend ───────────────────────────────────────────────────────────────
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # ── Email / SMTP ───────────────────────────────────────────────────────────
+    SMTP_HOST: str = "localhost"
+    SMTP_PORT: int = 1025
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@activia-trace.local"
+    SMTP_TLS: bool = False
+    EMAIL_BACKEND: str = "stub"
+
     # ── Observability (optional) ──────────────────────────────────────────────
     OTEL_ENABLED: bool = False
     OTEL_EXPORTER_OTLP_ENDPOINT: str = ""

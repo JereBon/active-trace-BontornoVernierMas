@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
 from app.repositories.usuario import UsuarioRepository, decrypt_usuario
+from app.repositories.usuario_rol import UsuarioRolRepository
 from app.schemas.usuario import UsuarioCreate, UsuarioOut, UsuarioUpdate
 
 
@@ -31,18 +32,28 @@ class UsuarioService:
 
     def __init__(self, session: AsyncSession, tenant_id: uuid.UUID) -> None:
         self._repo = UsuarioRepository(session, tenant_id)
+        self._rol_repo = UsuarioRolRepository(session, tenant_id)
 
     async def crear_usuario(self, data: UsuarioCreate) -> dict[str, Any]:
-        """Create a new usuario with optional PII profile.
+        """Create a new usuario with optional PII profile and role assignments.
 
-        Returns a dict with decrypted PII suitable for UsuarioOut.
+        Returns a dict with decrypted PII and roles suitable for UsuarioOut.
         """
         payload = data.model_dump()
+        roles = payload.pop("roles", [])
         usuario = await self._repo.create_usuario_with_pii(payload)
-        return decrypt_usuario(usuario)
+        await self._rol_repo.asignar_roles(usuario.id, roles)
+        result = decrypt_usuario(usuario)
+        result["roles"] = roles
+        return result
+
+    async def _agregar_roles(self, resultado: dict[str, Any]) -> dict[str, Any]:
+        """Add effective roles to a user result dict."""
+        resultado["roles"] = await self._rol_repo.get_roles_efectivos(resultado["id"])
+        return resultado
 
     async def obtener_usuario(self, usuario_id: uuid.UUID) -> dict[str, Any]:
-        """Get a single usuario by ID with decrypted PII.
+        """Get a single usuario by ID with decrypted PII and roles.
 
         Raises:
             NotFoundError: if not found in this tenant.
@@ -50,7 +61,7 @@ class UsuarioService:
         usuario = await self._repo.get(usuario_id)
         if usuario is None:
             raise NotFoundError(f"Usuario {usuario_id} not found")
-        return decrypt_usuario(usuario)
+        return await self._agregar_roles(decrypt_usuario(usuario))
 
     async def actualizar_usuario(
         self, usuario_id: uuid.UUID, data: UsuarioUpdate
@@ -77,9 +88,12 @@ class UsuarioService:
             raise NotFoundError(f"Usuario {usuario_id} not found")
 
     async def listar_usuarios(self) -> list[dict[str, Any]]:
-        """List all active usuarios in this tenant with decrypted PII."""
+        """List all active usuarios in this tenant with decrypted PII and roles."""
         usuarios = await self._repo.list()
-        return [decrypt_usuario(u) for u in usuarios]
+        results = [decrypt_usuario(u) for u in usuarios]
+        for r in results:
+            r["roles"] = await self._rol_repo.get_roles_efectivos(r["id"])
+        return results
 
     async def obtener_perfil_propio(self, usuario_id: uuid.UUID) -> dict[str, Any]:
         """Get the calling user's own profile (identity always from JWT).
@@ -90,4 +104,4 @@ class UsuarioService:
         usuario = await self._repo.get(usuario_id)
         if usuario is None:
             raise NotFoundError(f"Usuario {usuario_id} not found")
-        return decrypt_usuario(usuario)
+        return await self._agregar_roles(decrypt_usuario(usuario))

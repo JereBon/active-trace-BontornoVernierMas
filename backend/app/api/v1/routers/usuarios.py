@@ -122,6 +122,59 @@ async def deactivate_usuario(
     await session.commit()
 
 
+# ── Search (auth only, no special permission) ────────────────────────────────
+
+
+@router.get(
+    "/usuarios/search",
+    response_model=list[dict],
+)
+async def search_usuarios(
+    q: str = "",
+    session: DBSession = None,  # noqa
+    current_user: CurrentUser = None,  # noqa
+) -> list[dict]:
+    """Search users in the current tenant by name or email (authenticated only)."""
+    """Search users in the current tenant by name or email (authenticated only).
+
+    Returns [{id, nombre, apellidos, email}] — no PII beyond what the caller
+    already knows (they may need to send a message to a colleague).
+    """
+    from sqlalchemy import or_, select
+    from app.models.usuario import Usuario as _U
+    from app.core.crypto import decrypt
+
+    stmt = (
+        select(_U)
+        .where(
+            _U.tenant_id == current_user.tenant_id,
+            _U.deleted_at.is_(None),
+            _U.activo.is_(True),
+        )
+        .limit(50)
+    )
+    result = await session.execute(stmt)
+    users = result.scalars().all()
+
+    out = []
+    for u in users:
+        try:
+            email = decrypt(u.email_cifrado)
+        except Exception:
+            email = ""
+        if q:
+            ql = q.lower()
+            if ql not in u.nombre.lower() and ql not in (u.apellidos or "").lower() and ql not in email.lower():
+                continue
+        out.append({
+            "id": str(u.id),
+            "nombre": u.nombre,
+            "apellidos": u.apellidos or "",
+            "email": email,
+        })
+    return out
+
+
 # ── Own profile (authenticated only, no special permission required) ──────────
 
 @router.get(

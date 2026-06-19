@@ -152,7 +152,13 @@ class PadronParser:
         except UnicodeDecodeError:
             text = file_bytes.decode("latin-1")
 
-        reader = csv.DictReader(io.StringIO(text))
+        # Auto-detect delimiter (semicolon, comma, tab, etc.)
+        try:
+            dialect = csv.Sniffer().sniff(text[:1024])
+        except csv.Error:
+            dialect = csv.excel  # fallback to comma
+
+        reader = csv.DictReader(io.StringIO(text), dialect=dialect)
         if reader.fieldnames is None:
             raise PadronParseError("File is empty — no headers found.")
 

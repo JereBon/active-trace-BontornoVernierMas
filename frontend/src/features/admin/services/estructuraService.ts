@@ -30,7 +30,7 @@ export async function updateCarrera(id: string, payload: CarreraUpdate): Promise
 }
 
 export async function deleteCarrera(id: string): Promise<Carrera> {
-  const { data } = await api.patch<Carrera>(`/v1/carreras/${id}`, { activa: false })
+  const { data } = await api.patch<Carrera>(`/v1/carreras/${id}`, { estado: 'Inactiva' })
   return data
 }
 

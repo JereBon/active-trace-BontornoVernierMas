@@ -86,7 +86,14 @@ class MensajeInternoService:
             await self._repo.marcar_leido(mensaje_id, self._user_id)
             mensaje.leido = True  # reflect locally without extra DB roundtrip
 
-        return _to_out(mensaje)
+        out = _to_out(mensaje)
+
+        # Include thread replies
+        hilo_id = mensaje.hilo_id if mensaje.hilo_id is not None else mensaje.id
+        replies = await self._repo.get_thread(hilo_id, self._user_id)
+        out.respuestas = [_to_out(r) for r in replies if r.id != mensaje.id]
+
+        return out
 
     async def enviar(self, data: MensajeInternoCreate) -> MensajeInternoOut:
         """Send a new message to another user in the same tenant.

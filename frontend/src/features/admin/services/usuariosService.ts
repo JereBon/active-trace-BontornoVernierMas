@@ -1,9 +1,14 @@
 // features/admin/services/usuariosService.ts
 import { api } from '@/shared/services/api'
-import type { Usuario } from '../types'
+import type { Usuario, UsuarioCreate } from '../types'
 
 export async function getUsuarios(): Promise<Usuario[]> {
   const { data } = await api.get<Usuario[]>('/v1/users')
+  return data
+}
+
+export async function createUsuario(payload: UsuarioCreate): Promise<Usuario> {
+  const { data } = await api.post<Usuario>('/v1/users', payload)
   return data
 }
 

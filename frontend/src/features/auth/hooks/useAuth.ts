@@ -8,17 +8,33 @@ import {
   type ReactNode,
 } from 'react'
 import { setAccessToken, clearSession } from '@/shared/services/api'
-import { getMeApi, loginApi, refreshApi } from '@/features/auth/services/authService'
+import {
+  getMeApi,
+  loginApi,
+  refreshApi,
+  verify2FAApi,
+  enroll2FAApi,
+  confirm2FAApi,
+  forgotPasswordApi,
+  resetPasswordApi,
+  impersonateApi,
+  endImpersonationApi,
+} from '@/features/auth/services/authService'
 import {
   isAuthChallenge,
   type AuthChallenge,
   type LoginRequest,
   type User,
+  type TotpEnrollResponse,
+  type TotpConfirmResponse,
+  type ForgotResponse,
 } from '@/features/auth/types/auth.types'
 
-// Decode JWT payload without verifying signature (backend already verified it).
-// Used to extract sub, tenant_id and roles for the UI.
-function decodeJwtUser(token: string): User | null {
+interface DecodedUser extends User {
+  impersonating_user_id?: string
+}
+
+function decodeJwtUser(token: string): DecodedUser | null {
   try {
     const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
     const payload = JSON.parse(atob(b64)) as Record<string, unknown>
@@ -28,35 +44,32 @@ function decodeJwtUser(token: string): User | null {
       full_name: '',
       tenant_id: (payload.tenant_id as string) ?? '',
       roles: Array.isArray(payload.roles) ? (payload.roles as string[]) : [],
+      impersonating_user_id: (payload.impersonating_user_id as string) ?? undefined,
     }
   } catch {
     return null
   }
 }
 
-// ---------------------------------------------------------------------------
-// Context shape
-// ---------------------------------------------------------------------------
 interface AuthContextValue {
   user: User | null
-  /** True when an access token has been obtained (login or silent refresh) */
   isAuthenticated: boolean
-  /** True while the initial silent-refresh attempt is in progress */
   isLoading: boolean
-  /** Set when backend requires 2FA — contains the challenge_token */
   challenge: AuthChallenge | null
+  impersonatingUserId: string | null
   login: (req: LoginRequest) => Promise<void>
   logout: () => void
+  verify2FA: (code: string) => Promise<void>
+  enrollTOTP: () => Promise<TotpEnrollResponse>
+  confirmTOTP: (code: string) => Promise<TotpConfirmResponse>
+  forgotPassword: (email: string) => Promise<ForgotResponse>
+  resetPassword: (token: string, new_password: string) => Promise<void>
+  startImpersonation: (userId: string) => Promise<void>
+  stopImpersonating: () => Promise<void>
 }
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
 interface AuthProviderProps {
   children: ReactNode
 }
@@ -66,8 +79,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [challenge, setChallenge] = useState<AuthChallenge | null>(null)
+  const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null)
 
-  // On mount: attempt silent refresh to restore session across reloads
   useEffect(() => {
     const rt = localStorage.getItem('rt')
     if (!rt) {
@@ -79,6 +92,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       .then((data) => {
         setAccessToken(data.access_token)
         localStorage.setItem('rt', data.refresh_token)
+
+        const decoded = decodeJwtUser(data.access_token)
+        if (decoded?.impersonating_user_id) {
+          setImpersonatingUserId(decoded.impersonating_user_id)
+        }
+
         return getMeApi()
       })
       .then((me) => {
@@ -87,12 +106,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
       .catch(() => {
         localStorage.removeItem('rt')
+        clearImpersonationState()
         setIsAuthenticated(false)
       })
       .finally(() => {
         setIsLoading(false)
       })
   }, [])
+
+  function clearImpersonationState() {
+    setImpersonatingUserId(null)
+  }
 
   const login = useCallback(async (req: LoginRequest): Promise<void> => {
     const outcome = await loginApi(req)
@@ -110,10 +134,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setChallenge(null)
   }, [])
 
+  const verify2FA = useCallback(async (code: string): Promise<void> => {
+    if (!challenge) throw new Error('No active 2FA challenge')
+
+    const result = await verify2FAApi(challenge.challenge_token, code)
+
+    setAccessToken(result.access_token)
+    localStorage.setItem('rt', result.refresh_token)
+    const me = await getMeApi()
+    setUser(me)
+    setIsAuthenticated(true)
+    setChallenge(null)
+  }, [challenge])
+
+  const enrollTOTP = useCallback(async (): Promise<TotpEnrollResponse> => {
+    return enroll2FAApi()
+  }, [])
+
+  const confirmTOTP = useCallback(
+    async (code: string): Promise<TotpConfirmResponse> => {
+      return confirm2FAApi({ code })
+    },
+    [],
+  )
+
+  const forgotPassword = useCallback(
+    async (email: string): Promise<ForgotResponse> => {
+      return forgotPasswordApi({ email })
+    },
+    [],
+  )
+
+  const resetPassword = useCallback(
+    async (token: string, new_password: string): Promise<void> => {
+      await resetPasswordApi({ token, new_password })
+    },
+    [],
+  )
+
+  const startImpersonation = useCallback(
+    async (userId: string): Promise<void> => {
+      const result = await impersonateApi({ user_id: userId })
+
+      setAccessToken(result.access_token)
+      setImpersonatingUserId(result.impersonating_user_id)
+
+      const me = await getMeApi()
+      setUser(me)
+      setIsAuthenticated(true)
+    },
+    [],
+  )
+
+  const stopImpersonating = useCallback(async (): Promise<void> => {
+    const result = await endImpersonationApi()
+
+    setAccessToken(result.access_token)
+    clearImpersonationState()
+
+    const me = await getMeApi()
+    setUser(me)
+    setIsAuthenticated(true)
+  }, [])
+
   const logout = useCallback((): void => {
     setUser(null)
     setIsAuthenticated(false)
     setChallenge(null)
+    clearImpersonationState()
     clearSession()
   }, [])
 
@@ -122,16 +210,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isAuthenticated,
     isLoading,
     challenge,
+    impersonatingUserId,
     login,
     logout,
+    verify2FA,
+    enrollTOTP,
+    confirmTOTP,
+    forgotPassword,
+    resetPassword,
+    startImpersonation,
+    stopImpersonating,
   }
 
   return createElement(AuthContext.Provider, { value }, children)
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) {

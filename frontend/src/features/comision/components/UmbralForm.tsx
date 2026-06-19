@@ -104,7 +104,7 @@ export function UmbralForm({ materiaId, asignacionId, onGuardado }: Props) {
         <input
           id="valores_aprobatorios"
           type="text"
-          placeholder="Aprobado, A, Regular"
+          placeholder="ej: Satisfactorio, Aprobado"
           {...register('valores_aprobatorios')}
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
         />

@@ -79,7 +79,7 @@ export function PasoMateriasCohortesForm({ onNext }: Props) {
                 className="rounded border-gray-300"
               />
               <span className="text-sm text-gray-700">
-                {c.carrera_nombre ?? '—'} — Año {c.anio}{c.plan ? ` (${c.plan})` : ''}
+                {c.carrera_nombre ?? '—'} — {c.nombre} (Año {c.anio})
               </span>
             </label>
           ))}
